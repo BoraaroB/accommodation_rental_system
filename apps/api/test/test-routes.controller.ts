@@ -6,6 +6,7 @@ import {
   Logger,
   Post,
 } from '@nestjs/common';
+import { Public } from '../src/auth/public.decorator.js';
 
 /**
  * Routes that exist only in the e2e tests (`/api/v1/test-routes/...`). They
@@ -13,6 +14,7 @@ import {
  * before any feature module exists, a domain error code, an unexpected crash,
  * body-parser errors and a log line written inside a handler.
  */
+@Public()
 @Controller('test-routes')
 export class TestRoutesController {
   @Get()

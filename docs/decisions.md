@@ -28,7 +28,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-003: Global client identity
 
-- **Status:** Accepted — implemented in feature 5
+- **Status:** Implemented (feature 5)
 - **Context:** The challenge leaves "what happens to a client's account across portals" to us and says it will ask.
 - **Decision:** A user registers once and can sign in on any tenant portal with the same account. The e-mail is unique platform-wide and stored in lowercase.
 - **Consequences:** No duplicate accounts per portal. Clients do not book, so no client data leaks between tenants. Host rights are per tenant through memberships ([D-007](#d-007-roles-are-not-in-the-token)), so the same identity can be a host in one tenant and a client in another.
@@ -49,21 +49,21 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-006: Tenant isolation in the application layer
 
-- **Status:** Accepted — implemented in features 5–8
+- **Status:** Accepted — `TenantGuard` implemented in feature 5; tenant-scoped repositories in features 6–8
 - **Context:** "One tenant's data must never be visible on another tenant's portal"; where to enforce it is our choice.
 - **Decision:** All tenant routes are under `/api/v1/t/:tenantSlug/...`; `TenantGuard` resolves the slug (unknown → 404). Repository methods for listings, bookings and blocked days always take `tenantId`; single rows are loaded with `findFirst({ where: { id, tenantId } })`, never by id alone. Postgres row-level security is deliberately out of scope.
 - **Consequences:** Isolation is explicit, reviewable and proven by e2e tests (tenant A's listing through tenant B's URL → 404; a host of A on B's host routes → 403). Row-level security would add a second line of defence, but it needs the tenant passed to every database session, which is extra infrastructure for the time available; it stays a "Could".
 
 ## D-007: Roles are not in the token
 
-- **Status:** Accepted — implemented in feature 5
+- **Status:** Implemented (feature 5)
 - **Context:** "What interests us is how you separate who you are from what you may do."
 - **Decision:** The JWT carries only identity (`sub`, `email`). For every request, `AccessService` computes the effective role for the tenant in the URL — superadmin (platform flag), host (membership in that tenant) or client — and `ROLE_PERMISSIONS` maps it to permissions. Handlers declare `@RequirePermissions(...)`; `PermissionsGuard` enforces them.
 - **Consequences:** Identity and authorization are separate concerns. Membership changes take effect immediately, without re-issuing tokens. The FE reads roles from `GET /auth/me` for UI gating only; the server remains the authority.
 
 ## D-008: Registration creates clients; the superadmin creates hosts
 
-- **Status:** Accepted — implemented in features 5 and 8
+- **Status:** Implemented for registration (feature 5); hosts are created in feature 8
 - **Context:** "Registration is for clients — host accounts are created by the superadmin."
 - **Decision:** `POST /auth/register` always creates a plain client. Hosts are created (or an existing user is added as a host) only through the admin panel.
 - **Consequences:** No self-service privilege escalation.
@@ -308,3 +308,35 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - All writes run in one transaction with `createMany({ skipDuplicates: true })`, so a repeated run inserts only what is missing and never overwrites or deletes (a host's edits survive). Because `ON CONFLICT DO NOTHING` also skips rows that break the exclusion constraint, the seed counts each booking batch after inserting it and aborts when a booking is missing.
   - Passwords are hashed with bcrypt (cost 12, a salt per account), added in this feature instead of feature 5.
 - **Consequences:** `npm run db:seed` is safe to run at any time, including on every container start (feature 14). A changed demo password does not reach existing accounts. The Docker image needs `tsx` and the seed sources, or a compiled seed.
+
+## D-041: Permission checks are bound per controller and fail closed
+
+- **Status:** Implemented (feature 5)
+- **Context:** D-007 separates identity from authorization. Tenant routes need three checks in a fixed order — a signed-in user, a known tenant, the permission in that tenant — and a forgotten check must not open a route.
+- **Decision:**
+  - `AuthGuard` is the only global guard (`APP_GUARD`); `@Public()` opts a handler or controller out.
+  - Tenant controllers declare `@UseGuards(TenantGuard, PermissionsGuard)`; platform controllers (the admin panel) `@UseGuards(PermissionsGuard)`; public tenant controllers `@Public()` + `@UseGuards(TenantGuard)`. Nest runs global guards first, then controller guards left to right, so the order is Auth → Tenant → Permissions: an anonymous caller gets 401 before an unknown slug gets 404, and 404 comes before 403.
+  - A handler behind `PermissionsGuard` without `@RequirePermissions` is denied (403), even to a superadmin.
+  - Permissions: `listing:read|update`, `blocked-day:read|write`, `booking:read` (host panel); `tenant:read|write`, `host:read|write` (admin panel). `ROLE_PERMISSIONS`: a client has none (the portal is public), a host has the host-panel set, a superadmin has every permission on every tenant.
+  - Error codes: 401 `AUTHENTICATION_REQUIRED` (no Bearer token) or `INVALID_TOKEN` (bad, expired, or the user no longer exists); 404 `TENANT_NOT_FOUND`; 403 `INSUFFICIENT_PERMISSIONS`.
+- **Consequences:** The checks a route needs are visible on its controller. The one gap is a controller that uses `@RequirePermissions` but forgets `PermissionsGuard`; every guarded controller therefore gets e2e cases for 401 and 403 (features 7 and 8). The guards were tested in feature 5 through test-only routes.
+
+## D-042: Access tokens, registration and sign-in
+
+- **Status:** Implemented (feature 5)
+- **Context:** "Keep auth simple — we are not asking for SSO, 2FA or refresh-token rotation."
+- **Decision:**
+  - One access token: a JWT signed with HS256 (verification accepts HS256 only), claims `sub` and `email`, lifetime `JWT_EXPIRES_IN` in seconds. `JWT_SECRET` must have at least 32 characters; the placeholder in `.env.example` is shorter on purpose, so a copied example does not start. No refresh tokens or revocation: a token is valid until it expires, but roles and a deleted user are checked on every request.
+  - Passwords: bcrypt (cost 12) behind a `PasswordHasher` contract; the seed uses the same `BcryptPasswordHasher`. A password has 8 characters to 72 bytes, the most bcrypt hashes.
+  - E-mails are trimmed and lowercased by the shared `emailSchema` on the way in (D-003).
+  - `POST /auth/register` returns `201` with the new client's profile and no token; the client then signs in with `POST /auth/login`. An e-mail in use is 409 `EMAIL_TAKEN`.
+  - `POST /auth/login` answers an unknown e-mail and a wrong password with the same 401 `INVALID_CREDENTIALS`; the failed attempt is logged with the e-mail only.
+  - `GET /auth/me` needs a signed-in user but no permission ("who you are").
+- **Consequences:** Registration tells whether an e-mail has an account; this is accepted for a portal where accounts carry no private data, so login does not add timing protection. Rate limiting and account lockout are possible improvements outside the plan.
+
+## D-043: One global validation pipe for zod schemas
+
+- **Status:** Implemented (feature 5)
+- **Context:** In NestJS 12, `@Body({ schema })` / `@Query({ schema })` only attach a Standard Schema to the parameter; `StandardSchemaValidationPipe` validates against it.
+- **Decision:** `ValidationModule` (`src/core/validation/`) registers `StandardSchemaValidationPipe` as `APP_PIPE` with its defaults: handlers receive the parsed value (trimmed, lowercased, coerced), and a failure is a 400 `BAD_REQUEST` with one `path: message` entry per issue. Parameters without a schema and custom decorators are not validated.
+- **Consequences:** Every endpoint validates by naming a shared schema; nothing is validated by hand in controllers. Unknown body fields are dropped by `z.object`, so `isSuperadmin` in a registration body has no effect.

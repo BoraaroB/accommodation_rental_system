@@ -5,12 +5,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { REQUEST_ID_HEADER } from '../request-context/request-id.js';
 import { RequestLoggerMiddleware } from './request-logger.middleware.js';
 
-function finishRequest(statusCode: number, finished = true) {
+function finishRequest(
+  statusCode: number,
+  finished = true,
+  user?: { id: string; email: string },
+) {
   const middleware = new RequestLoggerMiddleware();
   const req = {
     method: 'GET',
     originalUrl: '/api/v1/t/adriatic/listings?page=2',
     headers: { authorization: 'Bearer secret-token' },
+    user,
   } as unknown as Request;
   const res = Object.assign(new EventEmitter(), {
     statusCode,
@@ -68,6 +73,20 @@ describe('RequestLoggerMiddleware', () => {
       ),
       { requestId: 'req-7' },
     );
+  });
+
+  it("adds the signed-in user's id, and nothing else about the user", () => {
+    const spy = vi
+      .spyOn(Logger.prototype, 'log')
+      .mockImplementation(() => undefined);
+
+    finishRequest(200, true, { id: 'user-42', email: 'guest@example.com' });
+
+    expect(spy).toHaveBeenCalledWith(expect.any(String), {
+      requestId: 'req-7',
+      userId: 'user-42',
+    });
+    expect(JSON.stringify(spy.mock.calls)).not.toContain('guest@example.com');
   });
 
   it('never logs request headers or the query string', () => {

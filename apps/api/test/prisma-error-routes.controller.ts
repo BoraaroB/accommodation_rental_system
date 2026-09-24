@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { addDays, today } from '@ars/shared';
 import { Controller, Param, Patch, Post } from '@nestjs/common';
+import { Public } from '../src/auth/public.decorator.js';
 import { PrismaService } from '../src/core/database/prisma.service.js';
 import type { Prisma } from '../src/generated/prisma/client.js';
 
@@ -9,6 +10,7 @@ import type { Prisma } from '../src/generated/prisma/client.js';
  * one makes the database reject a write, so the tests see how the API answers
  * a Prisma error.
  */
+@Public()
 @Controller('prisma-errors')
 export class PrismaErrorRoutesController {
   constructor(private readonly prisma: PrismaService) {}

@@ -3,11 +3,16 @@ import type { NextFunction, Request, Response } from 'express';
 import { readRequestId } from '../request-context/request-id.js';
 import { pathOf } from '../request-context/request-path.js';
 
+/** `req.user` as `AuthGuard` sets it on a signed-in request; only the id is logged. */
+interface SignedInRequest {
+  user?: { id: string };
+}
+
 /**
  * Writes one line per request when it ends: method, path (without the query
- * string), status and duration. 5xx is logged as an error, 4xx and requests
- * the client aborted as a warning, the rest as `log`. Headers and bodies are
- * never logged.
+ * string), status and duration, plus the signed-in user's id. 5xx is logged as
+ * an error, 4xx and requests the client aborted as a warning, the rest as
+ * `log`. Headers and bodies are never logged.
  */
 @Injectable()
 export class RequestLoggerMiddleware implements NestMiddleware {
@@ -19,7 +24,11 @@ export class RequestLoggerMiddleware implements NestMiddleware {
     res.on('close', () => {
       const durationMs = Math.round(performance.now() - startedAt);
       const path = pathOf(req.originalUrl);
-      const params = { requestId: readRequestId(res) };
+      const userId = (req as Request & SignedInRequest).user?.id;
+      const params = {
+        requestId: readRequestId(res),
+        ...(userId === undefined ? {} : { userId }),
+      };
       if (!res.writableFinished) {
         this.logger.warn(
           `${req.method} ${path} aborted by the client ${durationMs}ms`,

@@ -1,13 +1,7 @@
 import { parseIsoDate, type BookingDto, type ListingDto } from '@ars/shared';
-import { hash } from 'bcrypt';
+import { BcryptPasswordHasher } from '../../src/auth/bcrypt-password-hasher.js';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { SEED_TENANTS, SEED_USERS, tenantSlugForCountry } from './accounts.js';
-
-/**
- * bcrypt cost of the seeded passwords. A bcrypt hash carries its cost, so any
- * cost verifies at sign-in.
- */
-const BCRYPT_ROUNDS = 12;
 
 /** Rows per `createMany`, well below Postgres' limit of 65,535 bind parameters. */
 const BATCH_SIZE = 1000;
@@ -87,13 +81,15 @@ export async function seed(
     listing,
     tenantSlug: tenantSlugForCountry(listing.country),
   }));
-  // A salt per account, so equal passwords still get different hashes.
+  // Hashed like every password the API stores; a salt per account, so equal
+  // passwords still get different hashes.
+  const passwords = new BcryptPasswordHasher();
   const users = await Promise.all(
     SEED_USERS.map(async ({ email, name, isSuperadmin }) => ({
       email,
       name,
       isSuperadmin,
-      passwordHash: await hash(input.password, BCRYPT_ROUNDS),
+      passwordHash: await passwords.hash(input.password),
     })),
   );
 
