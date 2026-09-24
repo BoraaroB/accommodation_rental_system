@@ -1,0 +1,41 @@
+{
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "permissions": {
+    "deny": [
+      "Bash(git init *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git fetch *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git merge *)",
+      "Bash(git rebase *)",
+      "Bash(git reset *)",
+      "Bash(git restore *)",
+      "Bash(git stash *)",
+      "Bash(git rm *)",
+      "Bash(git mv *)",
+      "Bash(git tag *)",
+      "Bash(git cherry-pick *)",
+      "Bash(git revert *)",
+      "Bash(git clean *)",
+      "Bash(git am *)",
+      "Bash(git apply *)",
+      "Bash(git remote *)",
+      "Bash(git config *)",
+      "Bash(git submodule *)",
+      "Bash(git worktree *)",
+      "Bash(git -C *)",
+      "Bash(git -c *)",
+      "Bash(gh pr create *)",
+      "Bash(gh pr merge *)"
+    ]
+  }
+}

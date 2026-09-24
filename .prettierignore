@@ -1,0 +1,6 @@
+# Challenge material and data are committed as-is and never reformatted.
+data/
+docs/challenge/
+packages/shared/src/contracts.ts
+
+package-lock.json

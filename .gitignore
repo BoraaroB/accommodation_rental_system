@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+coverage/
+*.tsbuildinfo
+
+# Environment files (only the committed examples are allowed)
+.env*
+!.env.example
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Local, per-developer settings
+.claude/settings.local.json
