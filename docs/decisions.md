@@ -35,7 +35,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-004: Three tenants split by region
 
-- **Status:** Accepted — implemented in feature 4
+- **Status:** Implemented (feature 4)
 - **Context:** The data has no tenants; how to split 1,000 listings is our choice. "One tenant in the data is enough", but more show isolation better.
 - **Decision:** Three tenants assigned by listing country: `adriatic` (RS/HR/SI, 363 listings), `central-europe` (DE/AT/CZ/HU/CH, 428), `west-europe` (ES/PT/NL, 209).
 - **Consequences:** The split is deterministic, so tests may assert exact counts. Isolation can be demonstrated between real portals.
@@ -112,7 +112,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-015: CSV is loaded once by a TypeScript seed
 
-- **Status:** Accepted — implemented in feature 4
+- **Status:** Implemented (feature 4); how it runs and stays idempotent: [D-040](#d-040-the-seed-is-a-standalone-script-that-only-inserts-missing-rows)
 - **Context:** "How you load the data into the database is your choice." `contracts.ts`: "The mapping is part of the work."
 - **Decision:** A deterministic, idempotent TypeScript seed (`npm run db:seed`) parses the CSV with `csv-parse`, maps and validates every row with zod (snake_case strings → typed camelCase), and inserts with batched `createMany`. The application never reads the CSV at runtime.
 - **Consequences:** The mapping is visible and unit-tested; an invalid row stops the seed with a clear message. Postgres `COPY` would be faster but would hide the mapping in SQL.
@@ -297,3 +297,14 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** Prisma error messages and `meta` name tables and columns; `meta` of a failed constraint holds the whole rejected row, and a validation error's message prints the query's arguments — both can contain a password hash.
 - **Decision:** `PrismaExceptionFilter` maps P2002 → 409 `UNIQUE_VIOLATION`, P2003 → 409 `FOREIGN_KEY_VIOLATION`, P2025 → 404 `NOT_FOUND`, with fixed messages. Every other Prisma error is a 500 written by the catch-all filter, which logs only the stack; a validation error is logged with its call stack but without its message. Services still throw domain errors (e.g. `SLUG_TAKEN`) themselves; this filter is the safety net.
 - **Consequences:** No database details reach clients and no row values reach the logs; e2e tests check both.
+
+## D-040: The seed is a standalone script that only inserts missing rows
+
+- **Status:** Implemented (feature 4)
+- **Context:** D-015 asks for a deterministic, idempotent seed. The API's env schema requires server settings (port, CORS) the seed does not need, and the seed needs a password and a data directory the API must not require. Node 24 runs TypeScript but does not resolve the project's `.js` import specifiers to `.ts` files. Seeded accounts need password hashes before the auth feature exists.
+- **Decision:**
+  - `apps/api/prisma/seed/` is a plain script run by `prisma db seed` (`migrations.seed: 'tsx prisma/seed/main.ts'`), with its own zod env schema: `DATABASE_URL` (the API's `databaseUrlSchema`), `SEED_DATA_DIR`, `SEED_DEMO_PASSWORD`. The API never reads the `SEED_*` variables.
+  - Every row is mapped and validated before the first write; unknown countries and `guests > maxGuests` stop the seed there.
+  - All writes run in one transaction with `createMany({ skipDuplicates: true })`, so a repeated run inserts only what is missing and never overwrites or deletes (a host's edits survive). Because `ON CONFLICT DO NOTHING` also skips rows that break the exclusion constraint, the seed counts each booking batch after inserting it and aborts when a booking is missing.
+  - Passwords are hashed with bcrypt (cost 12, a salt per account), added in this feature instead of feature 5.
+- **Consequences:** `npm run db:seed` is safe to run at any time, including on every container start (feature 14). A changed demo password does not reach existing accounts. The Docker image needs `tsx` and the seed sources, or a compiled seed.

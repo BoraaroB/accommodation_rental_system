@@ -11,7 +11,7 @@ const originSchema = z
   });
 
 /** A PostgreSQL connection string that names a database. */
-const databaseUrlSchema = z
+export const databaseUrlSchema = z
   .url({ protocol: /^postgres(ql)?$/ })
   .refine((value) => databaseNameOf(value) !== '', {
     message:

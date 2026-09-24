@@ -19,6 +19,7 @@
     "pretest": "npm run build -w @ars/shared",
     "test": "npm run test --workspaces --if-present",
     "db:migrate": "npm run db:migrate -w @ars/api",
+    "db:seed": "npm run db:seed -w @ars/api",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
