@@ -1,0 +1,30 @@
+# Local infrastructure. Feature 2 adds the database; the API and the web app
+# are added in feature 14. Values come from the root `.env` (see .env.example).
+name: accommodation-rental-system
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in .env}
+      # Read by initdb/create-test-database.sh on the first start.
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:?set POSTGRES_TEST_DB in .env}
+    ports:
+      # Published on the loopback interface only.
+      - '127.0.0.1:${POSTGRES_PORT:?set POSTGRES_PORT in .env}:5432'
+    volumes:
+      # Postgres 18 images keep their data under /var/lib/postgresql/18/docker.
+      - db-data:/var/lib/postgresql
+      - ./docker/postgres/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db-data:

@@ -2,3 +2,6 @@
 # or checkout (the CSV files use CRLF).
 data/*.csv -text
 docs/challenge/** -text
+
+# Shell scripts run inside Linux containers.
+*.sh text eol=lf
