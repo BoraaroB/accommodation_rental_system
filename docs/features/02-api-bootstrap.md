@@ -1,7 +1,7 @@
 # Feature 2 — API bootstrap
 
 - **Branch:** `feat/api-bootstrap`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #3, 2026-09-24
 
 ## Goal and scope
 
@@ -176,4 +176,27 @@ Recorded instead of implemented, so the plan stays as approved. Each has a comme
 
 ## Commit message
 
-To be recorded after the commit.
+Two commits on `feat/api-bootstrap`, merged into `main` by merge commit `35dda14` (PR #3).
+
+`fd49603`:
+
+```
+feat(api): bootstrap NestJS API with config, logging and error format
+
+- Add apps/api (NestJS 12, ESM, Vitest) as one module per area under src/core
+- Validate env with zod at startup; invalid config logs fatal and exits 1
+- Serve routes under /api/v1 with URI versioning; unversioned /api/health
+- Add request id per request (header, error body, every log line) and apiErrorSchema errors
+- Add docker-compose Postgres 18 with a booking_test database
+```
+
+`7e3180c`:
+
+```
+chore(repo): add API and database structure conventions
+
+- Define module-per-entity layout generated with the Nest CLI and visible DI
+- Require interfaces at boundaries (repositories, external services) only
+- Add a production-readiness checklist and structure/schema review guides
+- Document improvements outside the plan instead of implementing them
+```
