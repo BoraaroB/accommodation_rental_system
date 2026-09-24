@@ -1,7 +1,7 @@
 # Feature 5 — API auth
 
 - **Branch:** `feat/api-auth`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #9, 2026-09-25
 
 ## Goal and scope
 
@@ -91,4 +91,16 @@ Tests trimmed before the commit, at the repository owner's request: unit specs t
 
 ## Commit message
 
-_Recorded after the commit._
+One commit on `feat/api-auth`, merged into `main` by merge commit `66954f6` (PR #9).
+
+`e046ff0`:
+
+```
+feat(api): add auth, tenant guard and per-tenant permissions
+
+- Register, login and me under /api/v1/auth; JWT holds only sub and email
+- Global AuthGuard with @Public; TenantGuard and PermissionsGuard per controller
+- Roles computed per request per tenant via AccessService and ROLE_PERMISSIONS
+- Global zod validation pipe; shared auth schemas; JWT_SECRET/JWT_EXPIRES_IN
+- Unit tests for guards and roles; e2e for 401/403/404 and token handling
+```
