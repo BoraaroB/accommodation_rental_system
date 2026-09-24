@@ -1,7 +1,7 @@
 # Feature 1 — Repo setup
 
 - **Branch:** `chore/repo-setup`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #1, 2026-09-24
 
 ## Goal and scope
 
@@ -83,4 +83,8 @@ Also checked:
 
 ## Commit message
 
-_Filled in after the commit._
+Feature commit `1803072` on `chore/repo-setup`, on top of an empty base commit `df07e95` (`chore: initial commit`) on `main`; merged into `main` by merge commit `c74ac88` (PR #1).
+
+```
+initial setup
+```

@@ -1,10 +1,15 @@
 # Progress
 
 - **Last updated:** 2026-09-24
-- **Current feature:** 1 — Repo setup (`chore/repo-setup`)
-- **Current step:** Feature 1 done — awaiting commit
-- **Next step:** After the commit and PR of feature 1: set it to `committed` and start feature 2 — API bootstrap (`feat/api-bootstrap`)
-- **Blocked / waiting on:** the repository owner — `git init`, first commit and PR of feature 1
+- **Current feature:** none — feature 1 is merged; feature 2 has not started
+- **Current step:** —
+- **Next step:** Feature 2 — API bootstrap (`feat/api-bootstrap`): restate the scope, verify the NestJS 12 docs, set it to `in progress` with its checklist and open `docs/features/02-api-bootstrap.md`
+- **Blocked / waiting on:** the repository owner's go-ahead for feature 2 and the branch `feat/api-bootstrap` created from an up-to-date `main`
+
+## Rules
+
+- A feature starts only after the previous feature's PR is **merged into `main`**. Before starting, confirm it in the local history: `git log --oneline --merges main` must show the merge of the previous feature's branch. If it does not (for example because `main` has not been pulled), wait.
+- One feature at a time; one feature = one branch = one PR.
 
 ## Open questions
 
@@ -16,30 +21,24 @@
 
 Statuses: `not started` · `in progress` · `done – awaiting commit` · `committed` · `PR merged`
 
-| #   | Feature                  | Branch               | Status                 | PR  | Done |
-| --- | ------------------------ | -------------------- | ---------------------- | --- | ---- |
-| 1   | Repo setup               | `chore/repo-setup`   | done – awaiting commit |     |      |
-| 2   | API bootstrap            | `feat/api-bootstrap` | not started            |     |      |
-| 3   | Database schema          | `feat/db-schema`     | not started            |     |      |
-| 4   | Database seed            | `feat/db-seed`       | not started            |     |      |
-| 5   | API auth                 | `feat/api-auth`      | not started            |     |      |
-| 6   | API portal (public)      | `feat/api-portal`    | not started            |     |      |
-| 7   | API host panel           | `feat/api-host`      | not started            |     |      |
-| 8   | API admin panel          | `feat/api-admin`     | not started            |     |      |
-| 9   | Web bootstrap            | `feat/web-bootstrap` | not started            |     |      |
-| 10  | Web portal               | `feat/web-portal`    | not started            |     |      |
-| 11  | Web auth                 | `feat/web-auth`      | not started            |     |      |
-| 12  | Web host panel           | `feat/web-host`      | not started            |     |      |
-| 13  | Web admin panel          | `feat/web-admin`     | not started            |     |      |
-| 14  | Docker                   | `chore/docker`       | not started            |     |      |
-| 15  | Final documentation pass | `docs/final-pass`    | not started            |     |      |
+| #   | Feature                  | Branch               | Status      | PR  | Done       |
+| --- | ------------------------ | -------------------- | ----------- | --- | ---------- |
+| 1   | Repo setup               | `chore/repo-setup`   | PR merged   | #1  | 2026-09-24 |
+| 2   | API bootstrap            | `feat/api-bootstrap` | not started |     |            |
+| 3   | Database schema          | `feat/db-schema`     | not started |     |            |
+| 4   | Database seed            | `feat/db-seed`       | not started |     |            |
+| 5   | API auth                 | `feat/api-auth`      | not started |     |            |
+| 6   | API portal (public)      | `feat/api-portal`    | not started |     |            |
+| 7   | API host panel           | `feat/api-host`      | not started |     |            |
+| 8   | API admin panel          | `feat/api-admin`     | not started |     |            |
+| 9   | Web bootstrap            | `feat/web-bootstrap` | not started |     |            |
+| 10  | Web portal               | `feat/web-portal`    | not started |     |            |
+| 11  | Web auth                 | `feat/web-auth`      | not started |     |            |
+| 12  | Web host panel           | `feat/web-host`      | not started |     |            |
+| 13  | Web admin panel          | `feat/web-admin`     | not started |     |            |
+| 14  | Docker                   | `chore/docker`       | not started |     |            |
+| 15  | Final documentation pass | `docs/final-pass`    | not started |     |            |
 
-## Current feature checklist — 1. Repo setup
+## Current feature checklist
 
-- [x] 1. Root skeleton: npm workspaces, `.nvmrc`, `.gitignore`, Prettier; original files moved to `data/`, `docs/challenge/` and `packages/shared/src/`
-- [x] 2. `packages/shared`: package setup, `contracts.ts`, date and money utilities with unit tests
-- [x] 3. Contributor guidelines and workflow configuration
-- [x] 4. `docs/` skeleton: index, implementation plan, architecture, decisions, progress tracker, feature log
-- [x] 5. Root `README.md`
-- [x] 6. Lint, typecheck, tests and build green; review of the full diff
-- [x] 7. Feature log complete, status `done – awaiting commit`, commit message proposed
+No feature in progress. The checklist of the next feature is added when it starts; the history of finished features is in [features/](features/).
