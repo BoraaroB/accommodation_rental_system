@@ -26,6 +26,9 @@ async function bootstrap(): Promise<void> {
 }
 
 bootstrap().catch((error: unknown) => {
+  // Logs are buffered until the app is listening; print the startup lines
+  // (e.g. the database retries) before the fatal one.
+  Logger.flush();
   Logger.fatal(
     error instanceof Error ? error.message : String(error),
     'Bootstrap',

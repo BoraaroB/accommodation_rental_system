@@ -1,0 +1,164 @@
+// Database schema. camelCase in TypeScript, snake_case in Postgres (@map / @@map).
+// Constraints Prisma cannot express (CHECK, EXCLUDE) are hand-written SQL in the
+// initial migration. The connection URL lives in prisma.config.ts.
+
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "esm"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Display currency. Every price in the data is in euros.
+enum Currency {
+  EUR
+
+  @@map("currency")
+}
+
+enum PropertyType {
+  apartment
+  studio
+  house
+  loft
+  room
+
+  @@map("property_type")
+}
+
+/// `cancelled` blocks nothing; `confirmed` and `completed` both occupy their days.
+enum BookingStatus {
+  confirmed
+  completed
+  cancelled
+
+  @@map("booking_status")
+}
+
+enum MembershipRole {
+  host
+
+  @@map("membership_role")
+}
+
+/// One portal at /{slug}. Deleting a tenant deletes its listings (with their
+/// bookings and blocked days) and its memberships; users stay.
+model Tenant {
+  id           String   @id @default(uuid()) @db.Uuid
+  /// Kebab-case (tenants_slug_format_check).
+  slug         String   @unique
+  name         String
+  logoUrl      String?  @map("logo_url")
+  primaryColor String?  @map("primary_color")
+  contactEmail String?  @map("contact_email")
+  currency     Currency @default(EUR)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  listings    Listing[]
+  memberships TenantMembership[]
+
+  @@map("tenants")
+}
+
+/// A global identity: one account signs in on every portal. What the user may
+/// do in a tenant comes from `isSuperadmin` and the memberships.
+model User {
+  id           String  @id @default(uuid()) @db.Uuid
+  /// Stored lowercase (users_email_lowercase_check), so the unique index is case-insensitive in effect.
+  email        String  @unique
+  passwordHash String  @map("password_hash")
+  name         String
+  isSuperadmin Boolean @default(false) @map("is_superadmin")
+
+  memberships TenantMembership[]
+  blockedDays BlockedDay[]
+
+  @@map("users")
+}
+
+/// A user's role in one tenant. A tenant may have several hosts, and a user may
+/// host several tenants.
+model TenantMembership {
+  userId   String         @map("user_id") @db.Uuid
+  tenantId String         @map("tenant_id") @db.Uuid
+  role     MembershipRole @default(host)
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Access check for (user, tenant) and the user's tenants in /auth/me.
+  @@id([userId, tenantId])
+  // Hosts of a tenant in the admin panel.
+  @@index([tenantId])
+  @@map("tenant_memberships")
+}
+
+/// `ListingDto` plus the owning tenant.
+model Listing {
+  id                 String       @id @default(uuid()) @db.Uuid
+  tenantId           String       @map("tenant_id") @db.Uuid
+  title              String
+  city               String
+  /// ISO 3166-1 alpha-2.
+  country            String
+  latitude           Float
+  longitude          Float
+  propertyType       PropertyType @map("property_type")
+  maxGuests          Int          @map("max_guests")
+  bedrooms           Int
+  pricePerNightCents Int          @map("price_per_night_cents")
+  currency           Currency     @default(EUR)
+  /// 5-point scale, one decimal; null until the listing is reviewed.
+  rating             Decimal?     @db.Decimal(2, 1)
+  reviewCount        Int          @map("review_count")
+  /// The listing's date from the data, not a moment in time.
+  createdAt          DateTime     @map("created_at") @db.Date
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookings    Booking[]
+  blockedDays BlockedDay[]
+
+  // City filter, the tenant's city list, and every tenant-scoped list and count.
+  @@index([tenantId, city])
+  // Price range filter and the price sorts.
+  @@index([tenantId, pricePerNightCents])
+  @@map("listings")
+}
+
+/// A stay of [checkIn, checkOut): the checkout day is free. Reaches its tenant
+/// through the listing.
+model Booking {
+  id        String        @id @default(uuid()) @db.Uuid
+  listingId String        @map("listing_id") @db.Uuid
+  checkIn   DateTime      @map("check_in") @db.Date
+  checkOut  DateTime      @map("check_out") @db.Date
+  guests    Int
+  status    BookingStatus
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  // Availability (no overlapping booking), the listing calendar, and the host
+  // bookings table filtered by listing.
+  @@index([listingId, checkIn])
+  @@map("bookings")
+}
+
+/// A day a host has taken off the calendar, one row per day.
+model BlockedDay {
+  listingId   String   @map("listing_id") @db.Uuid
+  day         DateTime @db.Date
+  /// Who blocked the day. RESTRICT: blocked days are never deleted together with a user.
+  createdById String   @map("created_by_id") @db.Uuid
+
+  listing   Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  createdBy User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
+
+  // Availability, the calendar, idempotent blocking and unblocking.
+  @@id([listingId, day])
+  @@map("blocked_days")
+}
