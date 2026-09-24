@@ -35,13 +35,43 @@ Each module follows controller → service → repository:
 
 All routes are under `/api/v1` ([D-018](decisions.md#d-018-uri-versioning-under-apiv1)); tenant routes under `/api/v1/t/:tenantSlug/...`.
 
+## API modules
+
+One Nest module per area ([D-035](decisions.md#d-035-one-nest-module-per-area)). `AppModule` only imports modules, so it is the table of contents; each module file lists what its area provides.
+
+```
+apps/api/src/
+  main.ts                 bootstrap: create the app, configureApp(), listen; fatal log + exit 1 on failure
+  app.module.ts           imports the modules below
+  app.setup.ts            prefix, versioning, CORS, logger, middleware that must run before the body parser
+  api.constants.ts        `api` prefix and default version `1`
+  core/
+    config/               AppConfigModule — env file + zod validation, ConfigService (global)
+    request-context/      RequestContextModule — request id, AsyncLocalStorage context
+    logging/              LoggingModule — AppLoggerService, one line per request
+    errors/               ErrorsModule — catch-all filter (APP_FILTER), error body
+  health/                 HealthModule — GET /api/health
+```
+
+| Module                 | Provides                                                                   | Imports                |
+| ---------------------- | -------------------------------------------------------------------------- | ---------------------- |
+| `AppConfigModule`      | `ConfigModule.forRoot` (global `ConfigService`)                            | —                      |
+| `RequestContextModule` | `RequestContextService`, `RequestIdMiddleware`, `RequestContextMiddleware` | —                      |
+| `LoggingModule`        | `AppLoggerService`, `RequestLoggerMiddleware`                              | `RequestContextModule` |
+| `ErrorsModule`         | `AllExceptionsFilter` as `APP_FILTER`                                      | `RequestContextModule` |
+| `HealthModule`         | `HealthController`                                                         | —                      |
+
+Features 3–8 add one module per entity — `users`, `tenants`, `listings`, `bookings`, `blocked-days` — plus `auth`, each in `src/<entities>/` and generated with the Nest CLI; `core/database` holds the Prisma client. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma.
+
 ## Request pipeline (API)
 
 ```mermaid
 flowchart LR
-  R[Request] --> RID[RequestId middleware]
-  RID --> LOG[RequestLogger middleware]
-  LOG --> AG[AuthGuard<br/>who you are]
+  R[Request] --> RID[RequestId middleware<br/>x-request-id]
+  RID --> LOG[RequestLogger middleware<br/>one line per request]
+  LOG --> BP[CORS, body parser]
+  BP --> CTX[RequestContext middleware<br/>AsyncLocalStorage]
+  CTX --> AG[AuthGuard<br/>who you are]
   AG --> TG[TenantGuard<br/>slug → tenant, 404]
   TG --> PG[PermissionsGuard<br/>what you may do]
   PG --> V[zod validation]
@@ -53,7 +83,7 @@ flowchart LR
 - **Tenant resolution** (feature 5): `TenantGuard` resolves `:tenantSlug` and exposes the tenant with `@CurrentTenant()`.
 - **Authorization** (feature 5): `PermissionsGuard` checks `@RequirePermissions(...)` against the role computed for the URL's tenant — superadmin, host (membership) or client — through `ROLE_PERMISSIONS` ([D-007](decisions.md#d-007-roles-are-not-in-the-token)).
 - **Errors** (features 2–3): a catch-all filter and a Prisma filter return the `apiErrorSchema` shape; 5xx never include a stack trace ([D-019](decisions.md#d-019-one-error-format-for-the-whole-api)).
-- **Logging** (feature 2): request id in every log line, the response header and the error body; one log line per request ([D-020](decisions.md#d-020-logging-with-the-built-in-consolelogger)).
+- **Logging** (feature 2): request id in every log line, the response header and the error body; one log line per request ([D-020](decisions.md#d-020-logging-with-the-built-in-consolelogger), [D-034](decisions.md#d-034-request-id-through-a-response-header-and-asynclocalstorage)). `RequestId` and `RequestLogger` are registered with `app.use` so they run before CORS and the body parser; the request context is entered after the body parser, because an `AsyncLocalStorage` context does not survive its stream callbacks.
 
 ## Tenant isolation
 
@@ -84,3 +114,6 @@ Derived at read time from bookings and blocked days ([D-009](decisions.md#d-009-
 ## Configuration
 
 Every environment-specific value comes from `.env`, validated at startup in one module per app ([D-022](decisions.md#d-022-configuration-comes-only-from-validated-env)). `.env.example` files are added by the features that introduce the variables ([D-027](decisions.md#d-027-envexample-files-are-created-with-the-feature-that-needs-them)).
+
+- **API:** `ConfigModule` validates the env with the zod schema in `apps/api/src/core/config/env.schema.ts` and serves the parsed values through `ConfigService`. It loads `apps/api/.env`, or `apps/api/.env.test` when `NODE_ENV=test` (both Vitest configs set it); real environment variables win over the file. An invalid or missing variable stops the start: the error names every failing variable, is logged as `fatal`, and the process exits with code 1.
+- **Docker Compose:** the root `.env` (from the root `.env.example`) holds the Postgres credentials, the test database name and the host port.

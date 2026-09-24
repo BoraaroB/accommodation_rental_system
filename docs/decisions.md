@@ -133,19 +133,19 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-018: URI versioning under /api/v1
 
-- **Status:** Accepted — implemented in feature 2
+- **Status:** Implemented (feature 2)
 - **Decision:** Global prefix `api` + NestJS URI versioning with default version `1`. A future v2 adds handlers with `@Version('2')` or `@Controller({ version: '2' })` without touching v1. `/api/health` is version-neutral. The prefix and version are constants in code, not environment variables.
 - **Consequences:** Breaking API changes can ship side by side with v1.
 
 ## D-019: One error format for the whole API
 
-- **Status:** Accepted — implemented in features 2–3
+- **Status:** Implemented in feature 2 (catch-all filter, `apiErrorSchema`); the Prisma filter follows in feature 3
 - **Decision:** Every error response has the shape `apiErrorSchema` (`statusCode`, `error`, `code`, `message`, `path`, `timestamp`, `requestId`), defined in `packages/shared`. Domain errors extend the built-in Nest exceptions and add a machine `code`. A catch-all filter (registered first) and a Prisma filter build bodies through one helper; unknown errors become 500 "Internal server error" without a stack trace.
 - **Consequences:** The FE parses every error with one schema and can map known codes to form fields.
 
 ## D-020: Logging with the built-in ConsoleLogger
 
-- **Status:** Accepted — implemented in feature 2
+- **Status:** Implemented (feature 2)
 - **Decision:** NestJS `ConsoleLogger` to stdout (JSON in Docker, pretty in development), a request id per request (from `x-request-id` or generated), a request log line on completion, business-event logs in services. Passwords, tokens and the `authorization` header are never logged.
 - **Consequences:** No extra dependency; Docker collects stdout. Pino or Winston only if transports or redaction become necessary.
 
@@ -157,7 +157,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-022: Configuration comes only from validated env
 
-- **Status:** Accepted — implemented in features 2, 9 and 14
+- **Status:** Implemented for the API (feature 2); the web app follows in feature 9 and Docker in feature 14
 - **Decision:** No URLs, hosts, ports, origins or secrets in code. Each app reads its environment in one module, validates it with zod at startup and fails fast with a clear error. `.env.example` files are committed without secrets; `.env*` is ignored by git.
 - **Consequences:** The same build runs locally and in Docker with different `.env` files.
 
@@ -230,3 +230,37 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** `contracts.ts`: a booking has no guest, only a head count. The challenge: clients do not book.
 - **Decision:** `Booking` has no `userId`. Host screens show "N guests"; clients have no "my bookings" page.
 - **Consequences:** The model reflects the data as delivered; adding booking later would add a guest relation.
+
+## D-033: Error codes use Nest's `errorCode` option
+
+- **Status:** Implemented (feature 2)
+- **Context:** Domain errors must carry a machine `code` ([D-019](#d-019-one-error-format-for-the-whole-api)). NestJS 12.1 added an `errorCode` option to the built-in exceptions (`new ConflictException(message, { errorCode, cause })`), exposed as `exception.errorCode`.
+- **Decision:** Domain errors pass their code through `errorCode`. The catch-all filter reads it into the `code` field of `apiErrorSchema`; the field name `code` stays as planned. An exception without a code (or with one that is not `UPPER_SNAKE_CASE`) gets the status name, e.g. `NOT_FOUND`. Client errors raised by Express middleware before Nest (the body parser's 400/413/415, marked `expose: true`) keep their status and message; any other error is a 500 "Internal server error" with no details. Query strings are never echoed in `path`.
+- **Consequences:** No custom exception base class is needed; every error, including a framework 404, has a stable machine code the FE can switch on. Requires `@nestjs/common` ≥ 12.1.
+
+## D-034: Request id through a response header and AsyncLocalStorage
+
+- **Status:** Implemented (feature 2)
+- **Context:** The request id must appear in the response header, the error body and every log line ([D-020](#d-020-logging-with-the-built-in-consolelogger)), including lines written by services that never see the request.
+- **Decision:**
+  - `RequestIdMiddleware` runs first (`app.use`) and sets `x-request-id`: the client's value when it matches `requestIdSchema` (letters, digits, `.`, `_`, `-`, at most 128 characters), otherwise a new UUID. Rejecting other values prevents log injection.
+  - `RequestLoggerMiddleware` also runs before CORS and the body parser, so every request — including a rejected body or a preflight — gets one log line (path without the query string).
+  - `RequestContextMiddleware` (Nest middleware, after the body parser) runs the rest of the request inside an `AsyncLocalStorage` store with the id, following the NestJS async-local-storage recipe. A context entered before the body parser is lost in its stream callbacks — an e2e test caught this.
+  - `AppLoggerService` extends `ConsoleLogger` and adds `requestId` to the structured params of every line written inside a request (a top-level field in JSON).
+- **Consequences:** Services log with a plain `new Logger(X.name)` and still get the request id. The store holds only the request id, as the recipe warns against contextual "god objects".
+
+## D-035: One Nest module per area
+
+- **Status:** Implemented (feature 2)
+- **Context:** The API must stay easy to read, navigate and extend as features 3–8 add modules. Dependencies should be visible; abstractions belong where the industry-standard NestJS architecture puts them, not everywhere.
+- **Decision:**
+  - Every area is a Nest module. Infrastructure lives in `src/core/<area>/` (config, request context, logging, errors); features live in `src/<feature>/`.
+  - `AppModule` only imports modules. Each module file lists its providers, exports and imports, and applies its own middleware.
+  - Everything with dependencies is created by the DI container. Code outside it (`main.ts`, `app.setup.ts`) takes instances with `app.get()`.
+  - Boundaries get a contract: repositories (over Prisma) and infrastructure services (hashing, token signing) are a TypeScript `interface` plus a `Symbol` injection token, registered with `useClass` and injected with `@Inject(TOKEN)`; unit tests pass in-memory fakes. Data shapes are interfaces or `z.infer` types from `@ars/shared`.
+  - Nest's own services (`ConfigService`, `Logger`) are used directly; controllers, modules and pure helpers get no interface; there are no generic base classes.
+  - Every entity has its own module in `src/<entities>/` (`users`, `tenants`, `listings`, `bookings`, `blocked-days`), created with the Nest CLI (`nest g module|controller|service <entities>`) so all its components land in that folder. It holds `<entities>.module.ts`, `.controller.ts`, `.service.ts`, the repository contract and its Prisma implementation, and the mapper. An entity served to several audiences (public portal, host panel) has one controller per audience in the same module.
+- **Consequences:**
+  - From `AppModule` any behaviour is two hops away (module file → class).
+  - A new feature is added as a new module, without editing existing ones.
+  - Middleware that must run before the body parser (request id, request log) is the one exception to "a module applies its own middleware"; `app.setup.ts` registers it and says why.
