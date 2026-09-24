@@ -42,6 +42,10 @@ export const envSchema = z
     LOG_LEVEL: z.enum(LOG_LEVELS),
     LOG_FORMAT: z.enum(['pretty', 'json']),
     DATABASE_URL: databaseUrlSchema,
+    /** HMAC key that signs the access tokens (HS256): at least 32 characters. */
+    JWT_SECRET: z.string().min(32),
+    /** Lifetime of an access token, in seconds. */
+    JWT_EXPIRES_IN: z.coerce.number().int().positive(),
   })
   // Tests create and delete rows, so in test mode the database must be a
   // `_test` one — also when a shell variable overrides `.env.test`.

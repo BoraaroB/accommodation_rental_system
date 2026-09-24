@@ -56,7 +56,9 @@ Every seeded account signs in with the password set in `SEED_DEMO_PASSWORD` (`ap
 npm run start:dev -w apps/api     # http://localhost:3000/api/health
 ```
 
-Every variable in `apps/api/.env.example` is required; the API refuses to start and names the missing or invalid variable. At startup it waits up to 10 seconds for the database, then stops. All routes are under `/api/v1`; only `/api/health` is unversioned.
+Every variable in `apps/api/.env.example` is required; the API refuses to start and names the missing or invalid variable. Set `JWT_SECRET` in `apps/api/.env` (and `.env.test`) to at least 32 random characters, e.g. `openssl rand -base64 48`; the short placeholder is rejected. At startup the API waits up to 10 seconds for the database, then stops. All routes are under `/api/v1`; only `/api/health` is unversioned.
+
+Sign in with a demo account: `POST /api/v1/auth/login` with `{ "email", "password" }` returns `{ "accessToken" }`, sent as `Authorization: Bearer <token>`. `GET /api/v1/auth/me` returns the user and the tenants they host. `POST /api/v1/auth/register` creates a client. The token holds only the user's id and e-mail; what the user may do in a tenant is worked out on every request ([D-007](docs/decisions.md#d-007-roles-are-not-in-the-token)).
 
 The e2e tests read `apps/api/.env.test` instead of `.env`:
 

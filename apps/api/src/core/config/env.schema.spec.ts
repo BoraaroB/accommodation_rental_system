@@ -8,6 +8,8 @@ const validEnv = {
   LOG_LEVEL: 'log',
   LOG_FORMAT: 'pretty',
   DATABASE_URL: 'postgresql://booking:secret@localhost:5432/booking',
+  JWT_SECRET: 'a-signing-key-of-at-least-32-characters',
+  JWT_EXPIRES_IN: '3600',
 };
 
 describe('envSchema', () => {
@@ -16,6 +18,7 @@ describe('envSchema', () => {
       ...validEnv,
       PORT: 3000,
       CORS_ORIGIN: ['http://localhost:5173'],
+      JWT_EXPIRES_IN: 3600,
     });
   });
 
@@ -60,6 +63,12 @@ describe('envSchema', () => {
     ['DATABASE_URL', 'http://localhost:5432/booking'],
     ['DATABASE_URL', 'postgresql://booking:secret@localhost:5432'],
     ['DATABASE_URL', 'postgresql://booking:secret@localhost:5432/'],
+    ['JWT_SECRET', ''],
+    ['JWT_SECRET', 'x'.repeat(31)],
+    ['JWT_EXPIRES_IN', ''],
+    ['JWT_EXPIRES_IN', '0'],
+    ['JWT_EXPIRES_IN', '1.5'],
+    ['JWT_EXPIRES_IN', '1h'],
   ])('rejects %s=%j', (name, value) => {
     expect(envSchema.safeParse({ ...validEnv, [name]: value }).success).toBe(
       false,
@@ -84,6 +93,17 @@ describe('envSchema', () => {
     });
     expect(result.success).toBe(false);
     expect(JSON.stringify(result.error?.issues)).not.toContain('secret');
+  });
+
+  it('does not echo a JWT secret that is too short', () => {
+    const result = envSchema.safeParse({
+      ...validEnv,
+      JWT_SECRET: 'short-signing-key',
+    });
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).not.toContain(
+      'short-signing-key',
+    );
   });
 
   describe('in test mode', () => {
