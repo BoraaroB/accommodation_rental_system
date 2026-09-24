@@ -1,0 +1,4 @@
+# Challenge material is committed as-is: no line-ending conversion on commit
+# or checkout (the CSV files use CRLF).
+data/*.csv -text
+docs/challenge/** -text

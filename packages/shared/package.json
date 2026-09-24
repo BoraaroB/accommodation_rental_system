@@ -1,0 +1,26 @@
+{
+  "name": "@ars/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Domain contracts and pure utilities shared by the API and the web app.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint --deny-warnings src",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "oxlint": "^1.85.0",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.11"
+  }
+}
