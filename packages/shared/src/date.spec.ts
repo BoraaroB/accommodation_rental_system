@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, today } from './date.js';
+import {
+  addDays,
+  isIsoDate,
+  isoDateSchema,
+  parseIsoDate,
+  today,
+} from './date.js';
 
 describe('today', () => {
   it('returns the UTC calendar date of the given instant', () => {
@@ -71,4 +77,31 @@ describe('addDays', () => {
       expect(() => addDays('2026-09-24', days)).toThrow(RangeError);
     },
   );
+});
+
+describe('isIsoDate and isoDateSchema', () => {
+  it.each(['2026-09-24', '2028-02-29'])('accept %s', (value) => {
+    expect(isIsoDate(value)).toBe(true);
+    expect(isoDateSchema.safeParse(value).success).toBe(true);
+  });
+
+  it.each(['2026-02-29', '2026-9-24', '2026-09-24T00:00:00Z', ''])(
+    'reject "%s"',
+    (value) => {
+      expect(isIsoDate(value)).toBe(false);
+      expect(isoDateSchema.safeParse(value).success).toBe(false);
+    },
+  );
+});
+
+describe('parseIsoDate', () => {
+  it('returns the UTC midnight of the date', () => {
+    expect(parseIsoDate('2026-10-01').toISOString()).toBe(
+      '2026-10-01T00:00:00.000Z',
+    );
+  });
+
+  it('rejects a date that does not exist', () => {
+    expect(() => parseIsoDate('2026-02-30')).toThrow(RangeError);
+  });
 });

@@ -27,9 +27,28 @@ cp .env.example .env                      # Postgres credentials and host port f
 docker compose up -d db                   # PostgreSQL 18 with the databases `booking` and `booking_test`
 cp apps/api/.env.example apps/api/.env    # API settings; DATABASE_URL matches the root example
 npm run db:migrate                        # create the tables (Prisma migrations)
+npm run db:seed                           # load data/*.csv: 3 tenants, 1,000 listings, 12,757 bookings
 ```
 
 `booking_test` is created by [docker/postgres/initdb](docker/postgres/initdb/) on the first start, when the data volume is empty.
+
+The seed can be run again at any time: it only inserts rows that are missing and never overwrites or deletes data. Listings go to a tenant by country:
+
+| Tenant (`/{tenant-slug}`) | Countries          | Listings |
+| ------------------------- | ------------------ | -------- |
+| `adriatic`                | RS, HR, SI         | 363      |
+| `central-europe`          | DE, AT, CZ, HU, CH | 428      |
+| `west-europe`             | ES, PT, NL         | 209      |
+
+### Demo accounts
+
+Every seeded account signs in with the password set in `SEED_DEMO_PASSWORD` (`apps/api/.env`).
+
+| Role       | E-mail                                                                                                   |
+| ---------- | -------------------------------------------------------------------------------------------------------- |
+| Superadmin | `admin@example.com`                                                                                      |
+| Host       | `host1.<tenant-slug>@example.com`, `host2.<tenant-slug>@example.com` (e.g. `host1.adriatic@example.com`) |
+| Client     | `client@example.com`                                                                                     |
 
 ### API
 
@@ -63,6 +82,7 @@ Run from the repository root. `test`, `lint`, `typecheck` and `build` run in eve
 | `npm run start:dev -w apps/api`           | Start the API in watch mode             |
 | `npm run test:e2e -w apps/api`            | API end-to-end tests                    |
 | `npm run db:migrate`                      | Apply and create Prisma migrations      |
+| `npm run db:seed`                         | Load the CSV data and demo accounts     |
 
 ## Repository structure
 

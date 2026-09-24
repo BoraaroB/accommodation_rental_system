@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import type { IsoDate } from './contracts.js';
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,7 +23,26 @@ export function addDays(date: IsoDate, days: number): IsoDate {
   return toIsoDate(shifted);
 }
 
-function parseIsoDate(value: string): Date {
+/** Whether the value is a calendar date that exists, in `YYYY-MM-DD` form. */
+export function isIsoDate(value: string): boolean {
+  try {
+    parseIsoDate(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** An `IsoDate`: a calendar date that exists, in `YYYY-MM-DD` form. */
+export const isoDateSchema = z.string().refine(isIsoDate, {
+  message: 'Expected an existing date in YYYY-MM-DD form',
+});
+
+/**
+ * The UTC midnight of an ISO date — how a `date` column is written through
+ * Prisma. Rejects anything that is not an existing `YYYY-MM-DD` date.
+ */
+export function parseIsoDate(value: string): Date {
   if (ISO_DATE_PATTERN.test(value)) {
     const parsed = new Date(`${value}T00:00:00.000Z`);
     // The round trip rejects dates that do not exist, such as 2026-02-30.

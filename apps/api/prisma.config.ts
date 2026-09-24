@@ -6,7 +6,13 @@ import { defineConfig } from 'prisma/config';
 
 export default defineConfig({
   schema: 'prisma/schema.prisma',
-  migrations: { path: 'prisma/migrations' },
+  migrations: {
+    path: 'prisma/migrations',
+    // `npm run db:seed`; Prisma 7 never seeds on its own. tsx runs the
+    // TypeScript directly: Node does not resolve the `.js` import specifiers
+    // to `.ts` files.
+    seed: 'tsx prisma/seed/main.ts',
+  },
   // Read with `process.env`, not Prisma's `env()`, which throws when the
   // variable is missing: `prisma generate` is a build step and needs no
   // database. Commands that connect (`migrate`) still fail without the URL,
