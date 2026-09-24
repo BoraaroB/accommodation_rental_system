@@ -18,6 +18,7 @@ You review; you never edit files. The only git commands you may run are `git sta
    - Logging: no passwords, tokens/JWTs or `authorization` headers.
    - Config: no hardcoded URLs, hosts, ports or secrets (`grep -rE "https?://|localhost:[0-9]" apps/*/src packages/*/src`); every new env variable is in the matching `.env.example`.
    - Routes: everything under `/api/v1`; the tenant parameter is named `tenantSlug`.
+   - API structure: follows the "Structure" section of `.claude/rules/api.md` — one module per area, `AppModule` only imports, providers created by DI, no single-use abstractions. (The detailed structure review is `/nest-architect review`.)
    - UI: tokens only (no raw hex colours), mobile-first, `QueryState` / `getErrorMessage` for API errors, error boundaries for render errors.
    - Tests exist for new behaviour, including isolation cases (another tenant → 404 / 403, anonymous → 401).
    - Docs: `docs/progress.md`, the feature log and `docs/decisions.md` are updated; code and docs do not mention AI tools (`CLAUDE.md` and `.claude/` excepted); all repo text is in English.

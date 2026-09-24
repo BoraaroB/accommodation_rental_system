@@ -13,4 +13,5 @@ paths:
 - Custom SQL (CHECK, EXCLUDE, …): create the migration with `migrate dev --create-only`, edit the SQL, then apply. Confirm that `migrate dev` reports no drift afterwards.
 - Deleting a tenant cascades to listings, bookings, blocked days and memberships; users stay (global identity).
 - The seed is deterministic and idempotent: tenant by country, fixed hosts and credentials, `createMany` in batches.
-- For any schema change follow `/db-change`.
+- The database enforces what it can: `NOT NULL` by default, foreign keys with an explicit `onDelete`, `UNIQUE` for natural keys, `CHECK` for value rules. Each constraint protects a named invariant; no speculative tables, columns or indexes.
+- Design a schema change first with `/db-architect design`, then follow `/db-change`; finish with `/db-architect review`.
