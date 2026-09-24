@@ -1,7 +1,7 @@
 # Feature 3 — Database schema
 
 - **Branch:** `feat/db-schema`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #5, 2026-09-24
 
 ## Goal and scope
 
@@ -124,4 +124,16 @@ Checked by hand:
 
 ## Commit message
 
-To be recorded after the commit.
+One commit on `feat/db-schema`, merged into `main` by merge commit `a978691` (PR #5).
+
+`6e39be8`:
+
+```
+feat(api): add Prisma 7 schema, migrations and database module
+
+- Model tenants, users, memberships, listings, bookings and blocked days
+- Enforce contract rules with CHECK and EXCLUDE constraints in the migration
+- Add PrismaService that waits for the database at startup, and a Prisma error filter
+- Validate DATABASE_URL; tests run only against a _test database
+- Keep row values and query arguments out of logs; flush logs on failed start
+```
