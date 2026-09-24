@@ -6,6 +6,9 @@ dist/
 coverage/
 *.tsbuildinfo
 
+# Generated Prisma client (`prisma generate`)
+apps/api/src/generated/
+
 # Environment files (only the committed examples are allowed)
 .env*
 !.env.example

@@ -7,6 +7,7 @@ const validEnv = {
   CORS_ORIGIN: 'http://localhost:5173',
   LOG_LEVEL: 'log',
   LOG_FORMAT: 'pretty',
+  DATABASE_URL: 'postgresql://booking:secret@localhost:5432/booking',
 };
 
 describe('envSchema', () => {
@@ -52,9 +53,58 @@ describe('envSchema', () => {
     ['CORS_ORIGIN', 'http://localhost:5173/'],
     ['CORS_ORIGIN', 'http://localhost:5173/app'],
     ['CORS_ORIGIN', 'ftp://files.example.com'],
+    ['DATABASE_URL', ''],
+    ['DATABASE_URL', 'not-a-url'],
+    ['DATABASE_URL', 'localhost:5432/booking'],
+    ['DATABASE_URL', 'mysql://booking:secret@localhost:3306/booking'],
+    ['DATABASE_URL', 'http://localhost:5432/booking'],
+    ['DATABASE_URL', 'postgresql://booking:secret@localhost:5432'],
+    ['DATABASE_URL', 'postgresql://booking:secret@localhost:5432/'],
   ])('rejects %s=%j', (name, value) => {
     expect(envSchema.safeParse({ ...validEnv, [name]: value }).success).toBe(
       false,
     );
+  });
+
+  it('accepts both postgres:// and postgresql://', () => {
+    for (const DATABASE_URL of [
+      'postgres://booking:secret@db:5432/booking',
+      'postgresql://booking:secret@db:5432/booking?schema=public',
+    ]) {
+      expect(envSchema.safeParse({ ...validEnv, DATABASE_URL }).success).toBe(
+        true,
+      );
+    }
+  });
+
+  it('does not echo an invalid database URL', () => {
+    const result = envSchema.safeParse({
+      ...validEnv,
+      DATABASE_URL: 'mysql://booking:secret@localhost:3306/booking',
+    });
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).not.toContain('secret');
+  });
+
+  describe('in test mode', () => {
+    const testEnv = { ...validEnv, NODE_ENV: 'test' };
+
+    it('accepts a database whose name ends in _test', () => {
+      const env = envSchema.parse({
+        ...testEnv,
+        DATABASE_URL: 'postgresql://booking:secret@localhost:5432/booking_test',
+      });
+      expect(env.DATABASE_URL).toBe(
+        'postgresql://booking:secret@localhost:5432/booking_test',
+      );
+    });
+
+    it('rejects any other database, without echoing the URL', () => {
+      const result = envSchema.safeParse(testEnv);
+      expect(result.success).toBe(false);
+      expect(result.error?.issues).toHaveLength(1);
+      expect(result.error?.issues[0]?.path).toEqual(['DATABASE_URL']);
+      expect(JSON.stringify(result.error?.issues)).not.toContain('secret');
+    });
   });
 });

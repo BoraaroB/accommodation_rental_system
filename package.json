@@ -11,13 +11,14 @@
     "node": ">=24.15.0"
   },
   "scripts": {
-    "prepare": "npm run build -w @ars/shared",
+    "prepare": "npm run build -w @ars/shared && npm run db:generate -w @ars/api",
     "build": "npm run build --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "pretypecheck": "npm run build -w @ars/shared",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "pretest": "npm run build -w @ars/shared",
     "test": "npm run test --workspaces --if-present",
+    "db:migrate": "npm run db:migrate -w @ars/api",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

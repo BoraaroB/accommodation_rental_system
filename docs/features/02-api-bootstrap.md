@@ -158,7 +158,7 @@ While fixing the first low finding, the e2e test showed that an `AsyncLocalStora
 - the `x-powered-by` header is removed;
 - a manual `SIGTERM` check: the process runs Nest's shutdown hooks and ends with the signal (exit status 143).
 
-The entity modules (`users`, `tenants`, `listings`, `bookings`, `blocked-days`) start with feature 3.
+The entity modules (`users`, `tenants`, `listings`, `bookings`, `blocked-days`) are each created by the feature that gives them their first provider or endpoint (decided in feature 3).
 
 ## Deliberately left out
 

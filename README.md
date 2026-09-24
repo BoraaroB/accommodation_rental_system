@@ -16,15 +16,17 @@ The stack is NestJS, React, PostgreSQL and Docker. The original task is in [docs
 
 ```bash
 nvm use
-npm install        # also builds packages/shared, which the apps import from dist/
+npm install        # also builds packages/shared and generates the Prisma client
 npm test
 ```
 
 ### Database
 
 ```bash
-cp .env.example .env       # Postgres credentials and host port for Docker Compose
-docker compose up -d db    # PostgreSQL 18 with the databases `booking` and `booking_test`
+cp .env.example .env                      # Postgres credentials and host port for Docker Compose
+docker compose up -d db                   # PostgreSQL 18 with the databases `booking` and `booking_test`
+cp apps/api/.env.example apps/api/.env    # API settings; DATABASE_URL matches the root example
+npm run db:migrate                        # create the tables (Prisma migrations)
 ```
 
 `booking_test` is created by [docker/postgres/initdb](docker/postgres/initdb/) on the first start, when the data volume is empty.
@@ -32,18 +34,19 @@ docker compose up -d db    # PostgreSQL 18 with the databases `booking` and `boo
 ### API
 
 ```bash
-cp apps/api/.env.example apps/api/.env
 npm run start:dev -w apps/api     # http://localhost:3000/api/health
 ```
 
-Every variable in `apps/api/.env.example` is required; the API refuses to start and names the missing or invalid variable. All routes are under `/api/v1`; only `/api/health` is unversioned.
+Every variable in `apps/api/.env.example` is required; the API refuses to start and names the missing or invalid variable. At startup it waits up to 10 seconds for the database, then stops. All routes are under `/api/v1`; only `/api/health` is unversioned.
 
 The e2e tests read `apps/api/.env.test` instead of `.env`:
 
 ```bash
-cp apps/api/.env.example apps/api/.env.test   # LOG_LEVEL=fatal keeps the test output quiet
+cp apps/api/.env.example apps/api/.env.test   # then set the database in DATABASE_URL to booking_test
 npm run test:e2e -w apps/api
 ```
+
+The e2e setup applies the migrations to that database and refuses to run against a database whose name does not end in `_test`. `LOG_LEVEL=fatal` in `.env.test` keeps the test output quiet.
 
 ## Commands
 
@@ -59,6 +62,7 @@ Run from the repository root. `test`, `lint`, `typecheck` and `build` run in eve
 | `npm test -w packages/shared`             | Run a script in a single workspace      |
 | `npm run start:dev -w apps/api`           | Start the API in watch mode             |
 | `npm run test:e2e -w apps/api`            | API end-to-end tests                    |
+| `npm run db:migrate`                      | Apply and create Prisma migrations      |
 
 ## Repository structure
 

@@ -44,7 +44,7 @@ Every change keeps the API production ready:
 - Configuration validated at startup; a bad env logs `fatal` and exits 1. No defaults for environment-specific values.
 - JSON logs in production (`LOG_FORMAT=json`), request id on every line, no secrets in logs.
 - Errors only in the `apiErrorSchema` shape; no stack traces or internal details to clients; 4xx from the body parser keep their status.
-- Graceful shutdown: `app.enableShutdownHooks()`, and providers holding connections close them in `onModuleDestroy` / `beforeApplicationShutdown`.
+- Graceful shutdown: `app.enableShutdownHooks()`, and providers holding connections close them in `onApplicationShutdown`, which Nest runs after the HTTP server has closed (`onModuleDestroy` / `beforeApplicationShutdown` run while requests may still be in flight).
 - No framework fingerprint (`x-powered-by` off); CORS limited to the configured origins; body size limited by the parser default.
 - `GET /api/health` for the container health check.
 - Every behaviour has unit tests and, for HTTP behaviour, e2e tests.

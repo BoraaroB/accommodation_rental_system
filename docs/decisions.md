@@ -139,7 +139,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-019: One error format for the whole API
 
-- **Status:** Implemented in feature 2 (catch-all filter, `apiErrorSchema`); the Prisma filter follows in feature 3
+- **Status:** Implemented (features 2 and 3)
 - **Decision:** Every error response has the shape `apiErrorSchema` (`statusCode`, `error`, `code`, `message`, `path`, `timestamp`, `requestId`), defined in `packages/shared`. Domain errors extend the built-in Nest exceptions and add a machine `code`. A catch-all filter (registered first) and a Prisma filter build bodies through one helper; unknown errors become 500 "Internal server error" without a stack trace.
 - **Consequences:** The FE parses every error with one schema and can map known codes to form fields.
 
@@ -207,7 +207,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-029: Deleting a tenant cascades; users stay
 
-- **Status:** Accepted — implemented in features 3 and 8
+- **Status:** Implemented in feature 3 (cascading foreign keys); the admin deletion follows in feature 8
 - **Decision:** Deleting a tenant cascades to its listings, bookings, blocked days and host memberships. Users are not deleted, because identity is global ([D-003](#d-003-global-client-identity)). The admin UI asks for the slug to be typed as confirmation.
 - **Consequences:** No orphaned tenant data; a person who hosted the deleted tenant keeps their account.
 
@@ -219,14 +219,14 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-031: Prisma 7, pinned
 
-- **Status:** Accepted — implemented in feature 3
+- **Status:** Implemented (feature 3)
 - **Context:** On 2026-09-24 npm `latest` for `prisma` points to `8.0.0-rc.15`; the stable line is 7.10.
 - **Decision:** Every Prisma package is installed with `@7`; the v7 documentation (`/docs/orm/v7`) is the reference.
 - **Consequences:** No release-candidate code in the project.
 
 ## D-032: Bookings are not linked to users
 
-- **Status:** Accepted — implemented in feature 3
+- **Status:** Implemented (feature 3)
 - **Context:** `contracts.ts`: a booking has no guest, only a head count. The challenge: clients do not book.
 - **Decision:** `Booking` has no `userId`. Host screens show "N guests"; clients have no "my bookings" page.
 - **Consequences:** The model reflects the data as delivered; adding booking later would add a guest relation.
@@ -264,3 +264,36 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - From `AppModule` any behaviour is two hops away (module file → class).
   - A new feature is added as a new module, without editing existing ones.
   - Middleware that must run before the body parser (request id, request log) is the one exception to "a module applies its own middleware"; `app.setup.ts` registers it and says why.
+
+## D-036: The database enforces the contract's value rules
+
+- **Status:** Implemented (feature 3)
+- **Context:** `contracts.ts` states value rules (1–12 guests, 0 bedrooms for a studio, integer cents, a null rating has no reviews) and guarantees that bookings never overlap. The zod schemas check input, but the seed, fixtures and future code write to the database too.
+- **Decision:**
+  - Native Postgres enums for property type, booking status, membership role and currency; `uuid` ids; `date` for calendar dates; `numeric(2,1)` rating; `timestamptz` only for the tenant's timestamps.
+  - CHECK constraints in the initial migration: `check_out > check_in`, guests ≥ 1, max guests 1–12, bedrooms ≥ 0 and 0 for a studio, price ≥ 0, review count ≥ 0 and 0 without a rating, rating 0–5, lowercase e-mail, kebab-case slug (the format only; reserved slugs are a routing rule checked by the API).
+  - `EXCLUDE USING gist (listing_id WITH =, daterange(check_in, check_out) WITH &&) WHERE (status <> 'cancelled')` with `btree_gist`: active stays on a listing never overlap; `daterange` is `[)`, so a stay may start on the previous checkout day.
+  - Foreign keys: deleting a tenant cascades to listings, their bookings and blocked days, and memberships; `blocked_days.created_by_id → users` is `RESTRICT`, so calendar data is never deleted with a user.
+  - Bookings and blocked days reach their tenant through the listing; they have no `tenant_id` column.
+- **Consequences:** Every CSV row passes. A violation is a bug (zod checks first), so it is a 500. `prisma migrate dev` reports no drift for the hand-written SQL (checked with a second `migrate dev --create-only`, which produced an empty migration). Rules that compare tables (guests ≤ max guests) or depend on today stay in the API.
+
+## D-037: Generating the Prisma client needs no database
+
+- **Status:** Implemented (feature 3)
+- **Context:** The plan had `prisma.config.ts` read the URL with Prisma's `env("DATABASE_URL")`, which throws when the variable is missing. `prisma generate` runs on `npm install` and before tests, type checks and builds, and needs no database.
+- **Decision:** `prisma.config.ts` reads `process.env.DATABASE_URL`. `npm install` (root `prepare`) and the API's `pretest`, `pretypecheck`, `prebuild` and `pretest:e2e` scripts generate the client into the gitignored `apps/api/src/generated/prisma`.
+- **Consequences:** A clean clone installs, tests and builds without a `.env`, and a Docker image can be built without a fake URL. Commands that connect (`migrate`) still fail without the URL ("The datasource.url property is required…"), and the API validates it at startup.
+
+## D-038: The API waits for the database at startup
+
+- **Status:** Implemented (feature 3)
+- **Context:** With the pg driver adapter, `$connect()` only creates a connection pool, so a stopped database would surface as a 500 on the first request.
+- **Decision:** `PrismaService` runs `SELECT 1` at startup, retrying up to 10 times, 1 s apart, and logs each failed attempt as a warning with the driver's error code (e.g. `ECONNREFUSED`), never the URL. If the database stays unreachable, the start fails with a `fatal` log and exit code 1. The connection is closed in `onApplicationShutdown`, after the HTTP server has stopped.
+- **Consequences:** The API survives a database that starts a few seconds later (local development, a container restart) and fails clearly otherwise. In Docker (feature 14), Compose also starts the API only when the database is healthy.
+
+## D-039: Prisma errors reach clients as fixed messages and the logs without row data
+
+- **Status:** Implemented (feature 3)
+- **Context:** Prisma error messages and `meta` name tables and columns; `meta` of a failed constraint holds the whole rejected row, and a validation error's message prints the query's arguments — both can contain a password hash.
+- **Decision:** `PrismaExceptionFilter` maps P2002 → 409 `UNIQUE_VIOLATION`, P2003 → 409 `FOREIGN_KEY_VIOLATION`, P2025 → 404 `NOT_FOUND`, with fixed messages. Every other Prisma error is a 500 written by the catch-all filter, which logs only the stack; a validation error is logged with its call stack but without its message. Services still throw domain errors (e.g. `SLUG_TAKEN`) themselves; this filter is the safety net.
+- **Consequences:** No database details reach clients and no row values reach the logs; e2e tests check both.

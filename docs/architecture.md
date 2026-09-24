@@ -21,7 +21,7 @@ flowchart LR
 ## Data flow: CSV → database → API → UI
 
 1. **Seed** (`npm run db:seed`, feature 4): `csv-parse` reads the CSV as snake_case strings; mappers convert and validate each row with zod; batched `createMany` inserts them. Tenants are assigned by country ([D-004](decisions.md#d-004-three-tenants-split-by-region)). The CSV is never read at runtime ([D-015](decisions.md#d-015-csv-is-loaded-once-by-a-typescript-seed)).
-2. **Database** (feature 3): Prisma models with camelCase fields mapped to snake_case columns. Money is `Int` cents, calendar dates are `date`.
+2. **Database** (feature 3): Prisma models with camelCase fields mapped to snake_case columns. Money is `Int` cents, calendar dates are `date`. CHECK and EXCLUDE constraints in the initial migration enforce the contract's value rules and non-overlapping active bookings; deleting a tenant cascades to its data ([D-036](decisions.md#d-036-the-database-enforces-the-contracts-value-rules)).
 3. **API** (features 5–8): repositories load tenant-scoped rows; mappers turn them into `ListingDto` / `BookingDto` (`Date` → `IsoDate`, `Decimal` → `number | null`, no `tenantId`) ([D-016](decisions.md#d-016-contractsts-is-the-api-response-shape)).
 4. **UI** (features 9–13): RTK Query fetches with arguments taken from the URL ([D-017](decisions.md#d-017-listing-filters-live-in-the-url)) and validates responses against the shared schemas in development.
 
@@ -49,7 +49,9 @@ apps/api/src/
     config/               AppConfigModule — env file + zod validation, ConfigService (global)
     request-context/      RequestContextModule — request id, AsyncLocalStorage context
     logging/              LoggingModule — AppLoggerService, one line per request
-    errors/               ErrorsModule — catch-all filter (APP_FILTER), error body
+    errors/               ErrorsModule — catch-all and Prisma filters (APP_FILTER), error body
+    database/             DatabaseModule — PrismaService (the Prisma client)
+  generated/prisma/       Prisma client (generated, gitignored)
   health/                 HealthModule — GET /api/health
 ```
 
@@ -58,10 +60,11 @@ apps/api/src/
 | `AppConfigModule`      | `ConfigModule.forRoot` (global `ConfigService`)                            | —                      |
 | `RequestContextModule` | `RequestContextService`, `RequestIdMiddleware`, `RequestContextMiddleware` | —                      |
 | `LoggingModule`        | `AppLoggerService`, `RequestLoggerMiddleware`                              | `RequestContextModule` |
-| `ErrorsModule`         | `AllExceptionsFilter` as `APP_FILTER`                                      | `RequestContextModule` |
+| `ErrorsModule`         | `AllExceptionsFilter`, `PrismaExceptionFilter` as `APP_FILTER`             | `RequestContextModule` |
+| `DatabaseModule`       | `PrismaService` (exported)                                                 | —                      |
 | `HealthModule`         | `HealthController`                                                         | —                      |
 
-Features 3–8 add one module per entity — `users`, `tenants`, `listings`, `bookings`, `blocked-days` — plus `auth`, each in `src/<entities>/` and generated with the Nest CLI; `core/database` holds the Prisma client. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma.
+Features 5–8 add one module per entity — `users`, `tenants`, `listings`, `bookings`, `blocked-days` — plus `auth`, each in `src/<entities>/`, generated with the Nest CLI by the feature that gives it its first provider. Modules with a Prisma repository import `DatabaseModule`. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma.
 
 ## Request pipeline (API)
 
@@ -115,5 +118,5 @@ Derived at read time from bookings and blocked days ([D-009](decisions.md#d-009-
 
 Every environment-specific value comes from `.env`, validated at startup in one module per app ([D-022](decisions.md#d-022-configuration-comes-only-from-validated-env)). `.env.example` files are added by the features that introduce the variables ([D-027](decisions.md#d-027-envexample-files-are-created-with-the-feature-that-needs-them)).
 
-- **API:** `ConfigModule` validates the env with the zod schema in `apps/api/src/core/config/env.schema.ts` and serves the parsed values through `ConfigService`. It loads `apps/api/.env`, or `apps/api/.env.test` when `NODE_ENV=test` (both Vitest configs set it); real environment variables win over the file. An invalid or missing variable stops the start: the error names every failing variable, is logged as `fatal`, and the process exits with code 1.
+- **API:** `ConfigModule` validates the env with the zod schema in `apps/api/src/core/config/env.schema.ts` and serves the parsed values through `ConfigService`. It loads `apps/api/.env`, or `apps/api/.env.test` when `NODE_ENV=test` (both Vitest configs set it); real environment variables win over the file. In test mode `DATABASE_URL` must name a database ending in `_test`. The Prisma CLI reads the same `apps/api/.env` through `prisma.config.ts` ([D-037](decisions.md#d-037-generating-the-prisma-client-needs-no-database)); at startup the API waits for the database ([D-038](decisions.md#d-038-the-api-waits-for-the-database-at-startup)). An invalid or missing variable stops the start: the error names every failing variable, is logged as `fatal`, and the process exits with code 1.
 - **Docker Compose:** the root `.env` (from the root `.env.example`) holds the Postgres credentials, the test database name and the host port.

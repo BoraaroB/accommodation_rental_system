@@ -16,6 +16,9 @@ describe('configuration (e2e)', () => {
     ['PORT', 'not-a-port'],
     ['LOG_FORMAT', 'xml'],
     ['CORS_ORIGIN', 'localhost'],
+    ['DATABASE_URL', 'not-a-url'],
+    // In test mode only a `_test` database is accepted.
+    ['DATABASE_URL', 'postgresql://booking:secret@localhost:5432/booking'],
   ])('refuses to start when %s is invalid', async (name, value) => {
     vi.stubEnv(name, value);
     const { AppConfigModule } =
