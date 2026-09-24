@@ -1,7 +1,7 @@
 # Feature 4 — Database seed
 
 - **Branch:** `feat/db-seed`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #7, 2026-09-24
 
 ## Goal and scope
 
@@ -82,6 +82,10 @@ Found in review and fixed:
 - None.
 
 ## Commit message
+
+One commit on `feat/db-seed`, merged into `main` by merge commit `7dddad6` (PR #7).
+
+`4cf02cd`:
 
 ```
 feat(api): seed tenants, demo accounts and CSV data
