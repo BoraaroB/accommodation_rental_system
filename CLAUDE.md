@@ -52,8 +52,8 @@ Verify docs for THESE versions, not for whatever is newest.
 ## Workflow
 
 - At the start of every session read `docs/progress.md` and continue from "Next step" (`/progress`).
-- One feature at a time (one feature = one branch = one PR). The next feature starts only after the user confirms the previous one is committed and its PR opened.
-- Feature cycle: restate scope + verify docs → set `in progress` + checklist in `docs/progress.md`, open `docs/features/NN-*.md` → implement with tests → `/check` + `reviewer` agent → finish feature log and decisions → status `done – awaiting commit` → report + `/commit-msg` proposal → wait for the user.
+- One feature at a time (one feature = one branch = one PR). **A new feature starts only after the previous feature's PR is merged into `main`.** Confirm it with `git log --oneline --merges main`: the merge of the previous feature's branch must be there. If it is not (e.g. `main` not pulled yet), stop and say so — never start on an unmerged predecessor.
+- Feature cycle: restate scope + verify docs → set `in progress` + checklist in `docs/progress.md`, open `docs/features/NN-*.md` → implement with tests → `/check` + `reviewer` agent → finish feature log and decisions → status `done – awaiting commit` → report + `/commit-msg` proposal → the user commits, opens and merges the PR → record the commit message and PR in the feature log, status `PR merged`.
 - After every finished step: tick the checklist and update "Current step" / "Next step" in `docs/progress.md`.
 - Git: the user runs every state-changing git command (`init`, `add`, `commit`, `push`, `branch`, `checkout -b`, `switch`, `merge`, `rebase`, `reset`, `stash`). Only `git status`, `git diff`, `git log` are allowed. Enforced by `permissions.deny` in `.claude/settings.json`; that list does not catch every spelling (e.g. `git --git-dir=… commit`), so the rule still applies to anything it misses.
 - Commit and PR proposals: Conventional Commits in English — subject ≤ ~72 chars, blank line, 2–5 bullets. No AI attribution: no `Co-Authored-By`, no "Generated with …" — also enforced by `attribution` in `.claude/settings.json`.

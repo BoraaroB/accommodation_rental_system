@@ -408,7 +408,7 @@ docs/
 
 - `progress.md`: last updated, current feature and step, next step, what is blocked / waiting, open questions; a table of all 15 features (number, feature, branch, status, PR, done date) with the statuses `not started`, `in progress`, `done – awaiting commit`, `committed`, `PR merged`; the step checklist of the current feature.
 - `features/NN-<name>.md`: goal and scope with references to the challenge, what was done, key files, decisions, how it was verified (commands and results), what was deliberately left out, the commit message used.
-- Update protocol: at the start of a feature the status becomes `in progress` with a checklist; after each finished step the checklist and current/next step are updated; at the end the status becomes `done – awaiting commit` with the feature log and decisions complete; after the commit, `committed` (or `PR merged`), then the next feature.
+- Update protocol: at the start of a feature the status becomes `in progress` with a checklist; after each finished step the checklist and current/next step are updated; at the end the status becomes `done – awaiting commit` with the feature log and decisions complete; after the commit and PR, `committed`; after the merge, `PR merged` with the commit message and PR number recorded in the feature log. Only then does the next feature start.
 
 ## Feature order (one feature = one branch = one PR)
 
@@ -419,7 +419,7 @@ docs/
 3. Lint, typecheck, tests and a review of the diff against the invariants.
 4. Finish the feature log and `decisions.md`; status `done – awaiting commit`.
 5. Report, commit message, PR title and description.
-6. After the commit and PR, status `committed`, then the next feature.
+6. After the commit and PR, status `committed`; after the PR is merged into `main`, status `PR merged`. **A feature never starts before the previous one is merged.**
 
 | #   | Feature (branch)     | Scope                                                                                                                                                                                                                                                                                                                                                          | Done when                                                                                                                                              |
 | --- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
