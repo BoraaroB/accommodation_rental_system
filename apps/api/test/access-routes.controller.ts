@@ -5,7 +5,7 @@ import type { AuthUser } from '../src/auth/auth-user.js';
 import { CurrentUser } from '../src/auth/current-user.decorator.js';
 import { CurrentTenant } from '../src/tenants/current-tenant.decorator.js';
 import { TenantGuard } from '../src/tenants/tenant.guard.js';
-import type { TenantRecord } from '../src/tenants/tenants.repository.js';
+import type { TenantRecord } from '../src/tenants/tenant-request.js';
 
 /**
  * A tenant route that exists only in the e2e tests

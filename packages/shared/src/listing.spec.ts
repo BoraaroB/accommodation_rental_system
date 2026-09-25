@@ -1,7 +1,8 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { z } from 'zod';
 import type { ListingDto } from './contracts.js';
-import { listingDtoSchema } from './listing.js';
+import { listingDtoSchema, listingPageSchema } from './listing.js';
+import type { Page } from './pagination.js';
 
 const listing: ListingDto = {
   id: '128699a9-d81d-4217-b143-21d21169ed25',
@@ -60,5 +61,13 @@ describe('listingDtoSchema', () => {
     expect(listingDtoSchema.safeParse({ ...listing, ...change }).success).toBe(
       false,
     );
+  });
+});
+
+describe('listingPageSchema', () => {
+  it('infers exactly Page<ListingDto>', () => {
+    expectTypeOf<z.infer<typeof listingPageSchema>>().toEqualTypeOf<
+      Page<ListingDto>
+    >();
   });
 });

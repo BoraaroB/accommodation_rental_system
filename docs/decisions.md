@@ -49,7 +49,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-006: Tenant isolation in the application layer
 
-- **Status:** Accepted — `TenantGuard` implemented in feature 5; tenant-scoped repositories in features 6–8
+- **Status:** Implemented for `TenantGuard` (feature 5) and the listings repository (feature 6); bookings and blocked days follow in feature 7
 - **Context:** "One tenant's data must never be visible on another tenant's portal"; where to enforce it is our choice.
 - **Decision:** All tenant routes are under `/api/v1/t/:tenantSlug/...`; `TenantGuard` resolves the slug (unknown → 404). Repository methods for listings, bookings and blocked days always take `tenantId`; single rows are loaded with `findFirst({ where: { id, tenantId } })`, never by id alone. Postgres row-level security is deliberately out of scope.
 - **Consequences:** Isolation is explicit, reviewable and proven by e2e tests (tenant A's listing through tenant B's URL → 404; a host of A on B's host routes → 403). Row-level security would add a second line of defence, but it needs the tenant passed to every database session, which is extra infrastructure for the time available; it stays a "Could".
@@ -70,7 +70,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-009: Availability is derived at read time
 
-- **Status:** Accepted — implemented in feature 6
+- **Status:** Implemented (feature 6)
 - **Context:** `contracts.ts` leaves open whether availability is derived from bookings or stored separately.
 - **Decision:** Availability is computed on read from bookings and blocked days. The date filter takes `from` (arrival, inclusive) and `to` (departure, exclusive). A listing is free for `[from, to)` when no non-cancelled booking has `checkIn < to AND checkOut > from` and no blocked day lies in `[from, to)` — a Prisma relation filter `none`, no raw SQL.
 - **Consequences:** One source of truth, nothing to synchronise; with an index on `(listing_id, check_in)` 12.7 thousand bookings are trivial. At a larger scale, options are a per-day availability table or a `daterange` column with a GiST index.
@@ -119,7 +119,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-016: contracts.ts is the API response shape
 
-- **Status:** Accepted — implemented in feature 6
+- **Status:** Implemented for `ListingDto` (feature 6); `BookingDto` follows in feature 7
 - **Context:** By its own comment `contracts.ts` is neither a DB entity nor an API contract.
 - **Decision:** `ListingDto` and `BookingDto` are used as the API response shapes. `contracts.ts` stays unchanged in `packages/shared`. Zod schemas mirror them, and a type-level test keeps the two aligned. The DB → API mapper converts `Date` to `IsoDate` and `Decimal` to `number | null` and never exposes `tenantId`.
 - **Consequences:** The FE consumes the delivered types directly.
@@ -163,7 +163,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-023: Null rating is shown as "New" and sorted last
 
-- **Status:** Accepted — implemented in features 6 and 10
+- **Status:** Implemented for the sort (feature 6); the "New" badge follows in feature 10
 - **Context:** 109 listings have `rating: null` — "a real state in the data, not a gap in it".
 - **Decision:** The UI shows a "New" badge and no stars; sorting by rating puts nulls last. Ratings stay on the data's 5-point scale.
 - **Consequences:** Unreviewed listings are neither hidden nor ranked as zero.
@@ -201,9 +201,9 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-028: Tenant slugs are kebab-case, with reserved words
 
-- **Status:** Accepted — implemented in feature 8
-- **Decision:** A slug must be kebab-case and unique (duplicate → 409 `SLUG_TAKEN`). `admin`, `api`, `login` and `register` are reserved, so `/admin` never collides with `/:tenantSlug`.
-- **Consequences:** Portal URLs are predictable and cannot shadow application routes.
+- **Status:** Implemented for the format check on lookup (feature 6); creation, uniqueness and reserved words follow in feature 8
+- **Decision:** A slug must be kebab-case and unique (duplicate → 409 `SLUG_TAKEN`). `admin`, `api`, `login` and `register` are reserved, so `/admin` never collides with `/:tenantSlug`. The shared `tenantSlugSchema` holds the format; `TenantsService.getBySlug` answers any other value with 404 `TENANT_NOT_FOUND` without querying the database.
+- **Consequences:** Portal URLs are predictable and cannot shadow application routes. A malformed slug (for example one with a NUL byte, which Postgres text rejects) is a 404, not a 500.
 
 ## D-029: Deleting a tenant cascades; users stay
 
@@ -340,3 +340,40 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** In NestJS 12, `@Body({ schema })` / `@Query({ schema })` only attach a Standard Schema to the parameter; `StandardSchemaValidationPipe` validates against it.
 - **Decision:** `ValidationModule` (`src/core/validation/`) registers `StandardSchemaValidationPipe` as `APP_PIPE` with its defaults: handlers receive the parsed value (trimmed, lowercased, coerced), and a failure is a 400 `BAD_REQUEST` with one `path: message` entry per issue. Parameters without a schema and custom decorators are not validated.
 - **Consequences:** Every endpoint validates by naming a shared schema; nothing is validated by hand in controllers. Unknown body fields are dropped by `z.object`, so `isSuperadmin` in a registration body has no effect.
+
+## D-044: A portal shows only its own tenant's listings
+
+- **Status:** Implemented (feature 6)
+- **Context:** Challenge item 1 asks for "a list of all listings"; the challenge also says one tenant's data must never be visible on another tenant's portal.
+- **Decision:** "All listings" means all listings of the portal's tenant. Every portal endpoint lives under `/api/v1/t/:tenantSlug/...`, and the city list, the listing list, the detail and availability are scoped to that tenant. There is no endpoint that lists listings across tenants.
+- **Consequences:** Follows from D-004 and D-006. A listing of tenant A requested through tenant B's portal is a 404 `LISTING_NOT_FOUND`, the same answer as for an id that does not exist.
+
+## D-045: Listing pages: 24 by default, at most 48, ties broken by id
+
+- **Status:** Implemented (feature 6)
+- **Context:** The plan fixes the page shape `{ items, page, pageSize, total }` and a page size of 24 (at most 48). Sorting by price, rating or date leaves ties (the 25 fixture listings of the e2e test tie on every key).
+- **Decision:**
+  - `page` (≥ 1) and `pageSize` (1–48, default 24) come from the shared `paginationQuerySchema`. Asked for by the repository owner: a client may send a page size, the server caps it.
+  - Every sort ends with `id asc`, so a listing never moves between pages or shows up twice.
+  - A page past the end is a 200 with no items and the real `total`.
+  - `findMany` and `count` run in parallel with `Promise.all`. A batch transaction would not make them consistent under READ COMMITTED, so it would only add a round trip.
+  - Price filters are capped at 2,147,483,647 cents, the largest value of the 32-bit price column, so an out-of-range price is a 400 instead of a database error. `page` has no upper bound; a page past the end is simply empty. An empty number (`?guests=`) counts as not sent instead of being coerced to 0. Decided by the repository owner after the review showed the 500.
+  - The short, bounded lookup lists (`GET /tenants`, `GET /t/:tenantSlug/cities`) are plain arrays.
+- **Consequences:** Stable, cacheable pages. Offset pagination slows down on deep pages; keyset pagination is the option at a larger scale.
+
+## D-046: Public availability lists the taken days of a range
+
+- **Status:** Implemented (feature 6)
+- **Context:** Challenge item 4: "On a single listing — when that listing is available to book." The calendar needs to know which days to strike through.
+- **Decision:**
+  - `GET /t/:tenantSlug/listings/:id/availability?from&to` returns `{ from, to, unavailableDays }`: the days of `[from, to)` taken by a non-cancelled booking or a blocked day, sorted. It does not say which of the two takes a day.
+  - The range follows the list's date filter: both dates required, `to` after `from`, `from` not before today (D-012).
+  - The filter and the calendar share one predicate (`activeStaysOverlapping`, `blockedDaysWithin`), so they cannot disagree. `unavailableDays` expands and clips the stays in a pure, unit-tested function.
+- **Consequences:** The work grows with the occupied days in the range, not with its length. Visitors cannot tell a host's blocked days from bookings.
+
+## D-047: The portal's configuration comes with the tenant lookup
+
+- **Status:** Implemented (feature 6)
+- **Context:** Every portal page needs the tenant's name and branding, and `TenantGuard` already loads the tenant for every tenant route.
+- **Decision:** `TenantGuard` selects the public configuration (logo URL, primary colour, contact e-mail, currency) with the slug lookup, so `GET /t/:tenantSlug` needs no second query. The response (`PublicTenant`) and `GET /tenants` leave out the tenant's `id`.
+- **Consequences:** Four more columns on a lookup that runs anyway. Internal ids stay inside the API; the web app addresses tenants by slug only.

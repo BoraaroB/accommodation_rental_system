@@ -66,6 +66,19 @@ apps/api/src/
 
 Features 5–8 add one module per entity — `users`, `tenants`, `listings`, `bookings`, `blocked-days` — plus `auth`, each in `src/<entities>/`, generated with the Nest CLI by the feature that gives it its first provider. Modules with a Prisma repository import `DatabaseModule`. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma.
 
+**Public portal** (feature 6), all `@Public()`; the tenant routes go through `TenantGuard` ([D-044](decisions.md#d-044-a-portal-shows-only-its-own-tenants-listings)):
+
+| Route (under `/api/v1`)                        | Module / controller                | Response                                                                                                                                  |
+| ---------------------------------------------- | ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /tenants`                                 | `tenants/` · `TenantsController`   | `PublicTenant[]`, by slug                                                                                                                 |
+| `GET /t/:tenantSlug`                           | `tenants/` · `TenantsController`   | `PublicTenant`, from the record `TenantGuard` loaded ([D-047](decisions.md#d-047-the-portals-configuration-comes-with-the-tenant-lookup)) |
+| `GET /t/:tenantSlug/cities`                    | `listings/` · `ListingsController` | `string[]`, alphabetical                                                                                                                  |
+| `GET /t/:tenantSlug/listings`                  | `listings/` · `ListingsController` | `Page<ListingDto>` ([D-045](decisions.md#d-045-listing-pages-24-by-default-at-most-48-ties-broken-by-id))                                 |
+| `GET /t/:tenantSlug/listings/:id`              | `listings/` · `ListingsController` | `ListingDto`; 404 `LISTING_NOT_FOUND`                                                                                                     |
+| `GET /t/:tenantSlug/listings/:id/availability` | `listings/` · `ListingsController` | `{ from, to, unavailableDays }` ([D-046](decisions.md#d-046-public-availability-lists-the-taken-days-of-a-range))                         |
+
+Inputs are validated by `listingQuerySchema`, `availabilityQuerySchema` and `listingIdSchema` from `@ars/shared`; the web app uses the same schemas.
+
 ## Request pipeline (API)
 
 ```mermaid
@@ -103,6 +116,8 @@ Derived at read time from bookings and blocked days ([D-009](decisions.md#d-009-
 - stays are half-open `[checkIn, checkOut)`; the checkout day is free;
 - cancelled bookings block nothing;
 - a listing is free for `[from, to)` when no active booking overlaps and no day in the range is blocked.
+
+In the API (feature 6) one pair of Prisma predicates, `activeStaysOverlapping` and `blockedDaysWithin` (`listings/build-listing-query.ts`), serves both the list's date filter (inside `none`) and the listing's calendar (as relation selects). The pure `unavailableDays` turns the stays and blocked days it loads into the taken days of the range.
 
 ## Web structure
 

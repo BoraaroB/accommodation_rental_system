@@ -1,6 +1,5 @@
 import { createParamDecorator, type ExecutionContext } from '@nestjs/common';
-import type { TenantRequest } from './tenant-request.js';
-import type { TenantRecord } from './tenants.repository.js';
+import type { TenantRecord, TenantRequest } from './tenant-request.js';
 
 /** The tenant of the URL, resolved by `TenantGuard`. */
 export const CurrentTenant = createParamDecorator(
