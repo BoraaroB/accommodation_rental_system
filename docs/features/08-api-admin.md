@@ -1,7 +1,7 @@
 # Feature 8 — API admin panel
 
 - **Branch:** `feat/api-admin`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #15, 2026-09-25
 
 ## Goal and scope
 
@@ -97,3 +97,17 @@ Found in the review and fixed:
 - An audit log of admin actions.
 
 ## Commit message
+
+One commit on `feat/api-admin`, merged into `main` by merge commit `4e44b63` (PR #15).
+
+`642f2bc`:
+
+```
+feat(api): add admin panel endpoints for tenants and hosts
+
+- Admin tenants: list, detail, create, merge-patch edit, cascading delete
+- Hosts: list, add a new or existing account, remove; accounts stay
+- Slugs: reserved words and a 63-char limit; 409 SLUG_TAKEN, ALREADY_HOST
+- Shared zod schemas for tenant config, host input and plain text
+- e2e for access, a new tenant's portal, slug rules and host accounts
+```
