@@ -4,6 +4,7 @@ import {
   isIsoDate,
   isoDateSchema,
   parseIsoDate,
+  toIsoDate,
   today,
 } from './date.js';
 
@@ -103,5 +104,11 @@ describe('parseIsoDate', () => {
 
   it('rejects a date that does not exist', () => {
     expect(() => parseIsoDate('2026-02-30')).toThrow(RangeError);
+  });
+});
+
+describe('toIsoDate', () => {
+  it('turns the UTC midnight of a date column back into the date', () => {
+    expect(toIsoDate(parseIsoDate('2026-10-01'))).toBe('2026-10-01');
   });
 });

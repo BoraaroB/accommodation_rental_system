@@ -2,7 +2,7 @@ import { Controller, type ExecutionContext, Get } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { describe, expect, it, vi } from 'vitest';
 import type { AuthenticatedRequest } from '../auth/auth-user.js';
-import type { TenantRequest } from '../tenants/tenant-request.js';
+import type { TenantRecord, TenantRequest } from '../tenants/tenant-request.js';
 import type { AccessService } from './access.service.js';
 import { PermissionsGuard } from './permissions.guard.js';
 import { RequirePermissions } from './require-permissions.decorator.js';
@@ -10,7 +10,15 @@ import { RequirePermissions } from './require-permissions.decorator.js';
 type Request = AuthenticatedRequest & TenantRequest;
 
 const user = { id: 'user-1', email: 'host@example.com' };
-const tenant = { id: 'tenant-a', slug: 'adriatic', name: 'Adriatic Stays' };
+const tenant: TenantRecord = {
+  id: 'tenant-a',
+  slug: 'adriatic',
+  name: 'Adriatic Stays',
+  logoUrl: null,
+  primaryColor: null,
+  contactEmail: null,
+  currency: 'EUR',
+};
 
 @Controller()
 class RoutesController {

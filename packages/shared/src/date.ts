@@ -53,7 +53,11 @@ export function parseIsoDate(value: string): Date {
   throw new RangeError(`Invalid ISO date: "${value}"`);
 }
 
-function toIsoDate(date: Date): IsoDate {
+/**
+ * The UTC calendar date of a `Date` — how a `date` column read through Prisma
+ * becomes an `IsoDate`.
+ */
+export function toIsoDate(date: Date): IsoDate {
   if (Number.isNaN(date.getTime())) {
     throw new RangeError('Invalid Date');
   }
