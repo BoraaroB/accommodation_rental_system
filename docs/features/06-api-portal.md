@@ -1,7 +1,7 @@
 # Feature 6 — API portal (public)
 
 - **Branch:** `feat/api-portal`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #11, 2026-09-25
 
 ## Goal and scope
 
@@ -94,3 +94,19 @@ Found in the review and fixed, as decided by the repository owner:
 - Paginate the portal list once there are more tenants than a landing page can show (`prisma-tenants.repository.ts`).
 - Cache the slug → tenant lookup that runs on every tenant route (`tenants.service.ts`, from feature 5).
 - `Cache-Control` / ETag on the public lookups (`/tenants`, `/t/:tenantSlug`, `/cities`), rate limiting on public routes, and keyset pagination with `(tenant_id, created_at)` / `(tenant_id, rating)` indexes at a larger scale.
+
+## Commit message
+
+One commit on `feat/api-portal`, merged into `main` by merge commit `e0244b0` (PR #11).
+
+`d8b6381`:
+
+```
+feat(api): add public portal endpoints for tenants and listings
+
+- GET /tenants and /t/:tenantSlug with public config; TenantGuard loads it
+- Listings module: cities, filtered/sorted/paginated list, detail, availability
+- Date filter and calendar share one predicate; checkout day free, cancelled ignored
+- Shared zod schemas for listing/availability queries, pages and public tenant
+- Unit tests for query builders and unavailableDays; e2e for edge cases and isolation
+```
