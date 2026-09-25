@@ -1,6 +1,8 @@
 import { z } from 'zod';
 import type { BookingDto } from './contracts.js';
 import { isoDateSchema } from './date.js';
+import { listingDtoSchema } from './listing.js';
+import { pageSchema } from './pagination.js';
 
 /** `cancelled` blocks nothing; `confirmed` and `completed` both occupy their days. */
 export const bookingStatusSchema = z.enum([
@@ -24,3 +26,18 @@ export const bookingDtoSchema = z.object({
   guests: z.number().int().min(1).max(12),
   status: bookingStatusSchema,
 }) satisfies z.ZodType<BookingDto>;
+
+/**
+ * A booking in the host panel's table: the booking plus its listing's title
+ * and the stay's total. Bookings carry no price, so the total is the nights
+ * times the listing's current price per night.
+ */
+export const hostBookingSchema = bookingDtoSchema.extend({
+  listingTitle: listingDtoSchema.shape.title,
+  totalCents: z.number().int().min(0),
+});
+
+/** A page of the host panel's booking table. */
+export const hostBookingPageSchema = pageSchema(hostBookingSchema);
+
+export type HostBooking = z.infer<typeof hostBookingSchema>;

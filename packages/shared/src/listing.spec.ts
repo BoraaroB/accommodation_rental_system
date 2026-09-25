@@ -1,7 +1,11 @@
 import { describe, expect, expectTypeOf, it } from 'vitest';
 import type { z } from 'zod';
 import type { ListingDto } from './contracts.js';
-import { listingDtoSchema, listingPageSchema } from './listing.js';
+import {
+  listingDtoSchema,
+  listingPageSchema,
+  listingUpdateSchema,
+} from './listing.js';
 import type { Page } from './pagination.js';
 
 const listing: ListingDto = {
@@ -69,5 +73,51 @@ describe('listingPageSchema', () => {
     expectTypeOf<z.infer<typeof listingPageSchema>>().toEqualTypeOf<
       Page<ListingDto>
     >();
+  });
+});
+
+describe('listingUpdateSchema', () => {
+  const edit = {
+    title: 'Rooftop apartment',
+    propertyType: 'apartment',
+    pricePerNightCents: 12000,
+    maxGuests: 3,
+    bedrooms: 2,
+  } as const;
+
+  it('trims the title and drops fields that are not editable', () => {
+    expect(
+      listingUpdateSchema.parse({
+        ...edit,
+        title: ' Rooftop apartment ',
+        tenantId: 'another',
+      }),
+    ).toEqual(edit);
+  });
+
+  it('accepts a studio with 0 bedrooms', () => {
+    const studio = { ...edit, propertyType: 'studio', bedrooms: 0 };
+    expect(listingUpdateSchema.parse(studio)).toEqual(studio);
+  });
+
+  it.each([
+    [
+      'a studio with a bedroom',
+      { propertyType: 'studio', bedrooms: 1 },
+      'bedrooms',
+    ],
+    ['0 guests', { maxGuests: 0 }, 'maxGuests'],
+    ['13 guests', { maxGuests: 13 }, 'maxGuests'],
+    ['a blank title', { title: ' ' }, 'title'],
+    [
+      'a price above the column',
+      { pricePerNightCents: 2_147_483_648 },
+      'pricePerNightCents',
+    ],
+    ['bedrooms above the column', { bedrooms: 2_147_483_648 }, 'bedrooms'],
+    ['a missing field', { bedrooms: undefined }, 'bedrooms'],
+  ])('rejects %s', (_case, change, path) => {
+    const result = listingUpdateSchema.safeParse({ ...edit, ...change });
+    expect(result.error?.issues.map((issue) => issue.path)).toEqual([[path]]);
   });
 });

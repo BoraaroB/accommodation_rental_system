@@ -2,6 +2,9 @@ import { z } from 'zod';
 import type { IsoDate } from './contracts.js';
 
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const MS_PER_DAY = 86_400_000;
+/** Postgres counts years from 1 AD; there is no year 0. */
+const FIRST_ISO_DATE = '0001-01-01';
 
 /**
  * Today's calendar date in UTC.
@@ -23,6 +26,24 @@ export function addDays(date: IsoDate, days: number): IsoDate {
   return toIsoDate(shifted);
 }
 
+/** Whole days from `from` to `to` (negative when `to` is earlier): the nights of a stay. */
+export function daysBetween(from: IsoDate, to: IsoDate): number {
+  // Both are UTC midnights, so the difference is an exact number of days.
+  return (
+    (parseIsoDate(to).getTime() - parseIsoDate(from).getTime()) / MS_PER_DAY
+  );
+}
+
+/** Every day of `[from, to)`, in order; empty when `to` is not after `from`. */
+export function eachDay(from: IsoDate, to: IsoDate): IsoDate[] {
+  const days: IsoDate[] = [];
+  // `YYYY-MM-DD` strings compare in calendar order.
+  for (let day = from; day < to; day = addDays(day, 1)) {
+    days.push(day);
+  }
+  return days;
+}
+
 /** Whether the value is a calendar date that exists, in `YYYY-MM-DD` form. */
 export function isIsoDate(value: string): boolean {
   try {
@@ -40,10 +61,11 @@ export const isoDateSchema = z.string().refine(isIsoDate, {
 
 /**
  * The UTC midnight of an ISO date — how a `date` column is written through
- * Prisma. Rejects anything that is not an existing `YYYY-MM-DD` date.
+ * Prisma. Rejects anything that is not an existing `YYYY-MM-DD` date, and the
+ * year 0000, which a Postgres `date` does not have.
  */
 export function parseIsoDate(value: string): Date {
-  if (ISO_DATE_PATTERN.test(value)) {
+  if (ISO_DATE_PATTERN.test(value) && value >= FIRST_ISO_DATE) {
     const parsed = new Date(`${value}T00:00:00.000Z`);
     // The round trip rejects dates that do not exist, such as 2026-02-30.
     if (!Number.isNaN(parsed.getTime()) && toIsoDate(parsed) === value) {

@@ -1,3 +1,6 @@
+import type { IsoDate } from './contracts.js';
+import { daysBetween } from './date.js';
+
 // Plain decimal notation with at most two decimals: "120", "19.9", "19.99".
 const EUROS_PATTERN = /^\d+(\.\d{1,2})?$/;
 
@@ -27,4 +30,13 @@ export function eurosToCents(euros: number): number {
     throw new RangeError(`Amount must have at most two decimals, got ${euros}`);
   }
   return cents;
+}
+
+/** The total of a stay `[checkIn, checkOut)`: its nights times the price per night, in cents. */
+export function stayTotalCents(
+  checkIn: IsoDate,
+  checkOut: IsoDate,
+  pricePerNightCents: number,
+): number {
+  return daysBetween(checkIn, checkOut) * pricePerNightCents;
 }

@@ -18,9 +18,33 @@ export {
   type RegisterInput,
   type UserProfile,
 } from './auth.js';
-export { bookingDtoSchema, bookingStatusSchema } from './booking.js';
+export {
+  blockDaysSchema,
+  listingBlockedDaysSchema,
+  MAX_BLOCKED_RANGE_DAYS,
+  type BlockDaysInput,
+  type ListingBlockedDays,
+} from './blocked-day.js';
+export {
+  bookingDtoSchema,
+  bookingStatusSchema,
+  hostBookingPageSchema,
+  hostBookingSchema,
+  type HostBooking,
+} from './booking.js';
+export {
+  hostBookingQuerySchema,
+  type HostBookingQuery,
+} from './booking-query.js';
+export {
+  dateRangeSchema,
+  upcomingDateRangeSchema,
+  type DateRange,
+} from './date-range.js';
 export {
   addDays,
+  daysBetween,
+  eachDay,
   isIsoDate,
   isoDateSchema,
   parseIsoDate,
@@ -33,18 +57,22 @@ export {
   listingDtoSchema,
   listingIdSchema,
   listingPageSchema,
+  listingUpdateSchema,
   propertyTypeSchema,
   type ListingAvailability,
+  type ListingUpdateInput,
 } from './listing.js';
 export {
   availabilityQuerySchema,
+  hostListingQuerySchema,
   listingQuerySchema,
   listingSortSchema,
   type AvailabilityQuery,
+  type HostListingQuery,
   type ListingQuery,
   type ListingSort,
 } from './listing-query.js';
-export { eurosToCents } from './money.js';
+export { eurosToCents, stayTotalCents } from './money.js';
 export {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,

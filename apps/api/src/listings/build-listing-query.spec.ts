@@ -37,6 +37,23 @@ describe('buildListingWhere', () => {
     });
   });
 
+  it('searches q in the title or the city, regardless of case', () => {
+    expect(buildListingWhere(TENANT, { q: 'split' })).toEqual({
+      tenantId: TENANT,
+      OR: [
+        { title: { contains: 'split', mode: 'insensitive' } },
+        { city: { contains: 'split', mode: 'insensitive' } },
+      ],
+    });
+  });
+
+  it('searches LIKE wildcards and the escape character as plain text', () => {
+    const where = buildListingWhere(TENANT, { q: '50%_\\' });
+    expect(where.OR).toContainEqual({
+      title: { contains: '50\\%\\_\\\\', mode: 'insensitive' },
+    });
+  });
+
   it('keeps only listings free for the whole range [from, to)', () => {
     const from = parseIsoDate('2026-10-01');
     const to = parseIsoDate('2026-10-04');

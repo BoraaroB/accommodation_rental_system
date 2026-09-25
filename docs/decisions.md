@@ -42,7 +42,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-005: A host manages all listings of their tenant
 
-- **Status:** Accepted — implemented in feature 7
+- **Status:** Implemented (feature 7)
 - **Context:** `contracts.ts`: a listing has no owner. The challenge: "a host manages the listings and calendar of their tenant".
 - **Decision:** Listings belong to a tenant only (`tenantId`); hosts are assigned to tenants, not to individual listings. Every host of a tenant can edit every listing of that tenant.
 - **Consequences:** A simple, literal reading of the requirement. Per-listing ownership could be added later with a join table without changing the tenant model.
@@ -77,17 +77,18 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-010: Blocked days, one row per day
 
-- **Status:** Accepted — implemented in feature 7
+- **Status:** Implemented (feature 7)
 - **Context:** Blocked days do not exist in the data; the no-overlap guarantee covers bookings only.
 - **Decision:** `BlockedDay (listingId, day)` with a composite primary key, one row per day. Blocking a day taken by an active (non-cancelled) booking returns 409 `DAY_ALREADY_BOOKED`. A day under a cancelled booking may be blocked. Blocking the same day twice is idempotent.
 - **Consequences:** Simple queries (`day >= from AND day < to`) and idempotency for free through the primary key.
+- **Implementation (feature 7):** the host blocks and unblocks a range `[from, to)` (`POST` body, `DELETE` query); a click in the calendar is a one-day range. Blocking is all or nothing: the first booked day is named in the 409 and no row is written. Both start today at the earliest, and one blocking request covers at most 366 days ([D-049](#d-049-a-blocking-request-covers-at-most-366-days)). Each row records who blocked it.
 
 ## D-011: Money is integer cents end to end
 
 - **Status:** Implemented for the conversion helper (feature 1); the rest follows from features 3–13
 - **Context:** `contracts.ts`: money is an integer in minor units; there are no floats on purpose.
 - **Decision:** Cents in the database (`Int`), the API, the URL filter parameters (`minPriceCents`, `maxPriceCents`) and all calculations. Euros exist only in form inputs and are converted once by `eurosToCents` in `@ars/shared`, which rejects amounts with more than two decimals (instead of rounding them silently — `1.005 * 100` is `100.49999…` in binary floating point), negative or non-finite amounts, and amounts too large for a safe integer.
-- **Consequences:** No floating-point money errors; one schema for the URL and the API. Stay totals are computed as `nights × pricePerNightCents`.
+- **Consequences:** No floating-point money errors; one schema for the URL and the API. Stay totals are computed as `nights × pricePerNightCents` by `stayTotalCents` in `@ars/shared` (feature 7).
 
 ## D-012: Dates are ISO strings in UTC, with one today()
 
@@ -95,20 +96,22 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** `contracts.ts` defines `IsoDate` as `YYYY-MM-DD` with no time and no offset; the data spans 2026-07-28 to 2027-04-24, partly in the past.
 - **Decision:** Dates travel as `IsoDate` strings and are stored as `date`. Date math lives in `@ars/shared` as pure functions over UTC dates (`today`, `addDays`, …). `today(now = new Date())` takes the clock as a parameter. The public calendar and the filter do not offer days before today (`from ≥ today()`); hosts cannot block past days.
 - **Consequences:** No time-zone bugs from local `Date` arithmetic; FE and BE agree on "today". Tests use dates relative to today (`addDays(today(), n)`), so they never go stale.
+- **Year 0000 (feature 7):** an `IsoDate` starts at `0001-01-01`; Postgres has no year 0, and host queries that allow past dates would otherwise fail in the database.
 
 ## D-013: Stale booking statuses are kept as-is
 
-- **Status:** Accepted — implemented in features 7 and 12
+- **Status:** Implemented in the API (feature 7: statuses are returned as stored); the time badge follows in feature 12
 - **Context:** With today at 2026-09-24, 532 bookings are `confirmed` although their checkout has passed.
 - **Decision:** Statuses are not rewritten. Availability treats `confirmed` and `completed` alike (both occupy days). The host table shows the stored status plus a time badge derived from the dates and `today()`: past, in progress or upcoming.
 - **Consequences:** The data stays exactly as delivered; the UI still tells the host what is happening now.
 
 ## D-014: Listing edits cannot break booking invariants
 
-- **Status:** Accepted — implemented in feature 7
+- **Status:** Implemented (feature 7)
 - **Context:** `contracts.ts`: `guests` is 1 to the listing's `maxGuests`; `bedrooms` is 0 for a studio.
 - **Decision:** Lowering `maxGuests` below the guest count of an active booking returns 409 `MAX_GUESTS_BELOW_BOOKING`. The edit schema requires `bedrooms === 0` for a studio and `maxGuests` between 1 and 12 (400 otherwise).
 - **Consequences:** Host edits cannot put existing data into a state the contract rules out.
+- **Implementation (feature 7):** "active" means not cancelled, past stays included, as everywhere else. The edit body carries all five editable fields (title, type, price, guests, bedrooms), so the studio rule can see the type and the bedrooms together; integer fields stop at the column's range.
 
 ## D-015: CSV is loaded once by a TypeScript seed
 
@@ -377,3 +380,28 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** Every portal page needs the tenant's name and branding, and `TenantGuard` already loads the tenant for every tenant route.
 - **Decision:** `TenantGuard` selects the public configuration (logo URL, primary colour, contact e-mail, currency) with the slug lookup, so `GET /t/:tenantSlug` needs no second query. The response (`PublicTenant`) and `GET /tenants` leave out the tenant's `id`.
 - **Consequences:** Four more columns on a lookup that runs anyway. Internal ids stay inside the API; the web app addresses tenants by slug only.
+
+## D-048: Host bookings carry the listing's title and a total at its current price
+
+- **Status:** Implemented (feature 7)
+- **Context:** Challenge item 9: "Viewing bookings." The host table shows listing, dates, nights, guests, status and total. `BookingDto` has none of the listing's data, and bookings carry no price.
+- **Decision:**
+  - `GET /t/:tenantSlug/host/bookings` returns `Page<HostBooking>`: `BookingDto` plus `listingTitle` and `totalCents`. `BookingDto` stays the base shape (D-016).
+  - The total is the nights times the listing's **current** price per night (`stayTotalCents`).
+  - Filters: `listingId`, `status`, and `from`/`to` keeping the stays that take a day of `[from, to)` — the calendar's rule, whatever the status. Past dates are allowed. Sorted by check-in, then id.
+  - A `listingId` of another tenant gives an empty page, like any filter that matches nothing.
+- **Consequences:** One query serves the table and the host calendar's bookings. A price change also changes the totals of past bookings; storing the price per booking would need the data to have it.
+
+## D-049: A blocking request covers at most 366 days
+
+- **Status:** Implemented (feature 7) — not in the plan, decided by the repository owner
+- **Context:** Blocking writes one row per day (D-010). Without a limit, one request such as `to=9999-12-31` would build and insert millions of rows.
+- **Decision:** `blockDaysSchema` rejects a range longer than `MAX_BLOCKED_RANGE_DAYS` (366) with 400. Unblocking and reading need no limit: they are one range query each.
+- **Consequences:** A host blocks a year at a time at most; the calendar selects far shorter ranges anyway.
+
+## D-050: The host listing search matches the title or the city
+
+- **Status:** Implemented (feature 7)
+- **Context:** The host panel's listing table has "search" in the plan, without saying what it searches.
+- **Decision:** `q` matches a substring of the title or the city, regardless of case (Prisma `contains` with `mode: 'insensitive'`). Prisma 7 does not escape `contains`, so `%`, `_` and `\` are escaped before the query and match as plain text. A blank `q` counts as not sent. The table is newest first, like the portal.
+- **Consequences:** A sequential scan over one tenant's listings, trivial at hundreds of rows.

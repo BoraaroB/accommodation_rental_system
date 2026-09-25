@@ -9,8 +9,9 @@ import type { TenantRecord } from '../src/tenants/tenant-request.js';
 
 /**
  * A tenant route that exists only in the e2e tests
- * (`/api/v1/t/:tenantSlug/access-check`). It carries the guards the host panel
- * (feature 7) will use, so their order and answers are tested now.
+ * (`/api/v1/t/:tenantSlug/access-check`). It carries the host panel's guards,
+ * so their order and answers — including a handler that declares no
+ * permission — are tested apart from any real route.
  */
 @Controller('t/:tenantSlug/access-check')
 @UseGuards(TenantGuard, PermissionsGuard)
