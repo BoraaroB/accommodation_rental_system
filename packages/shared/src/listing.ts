@@ -14,6 +14,20 @@ export const propertyTypeSchema = z.enum([
   'room',
 ]);
 
+/** The largest value of a listing's integer columns (Postgres `integer`). */
+export const MAX_LISTING_INT = 2_147_483_647;
+
+/**
+ * A listing's text (title, city) as a request sends it: trimmed, not blank,
+ * without control characters — Postgres text cannot hold a NUL byte, and no
+ * title or city has a control character.
+ */
+export const listingTextSchema = z
+  .string()
+  .trim()
+  .min(1)
+  .regex(/^\P{Cc}*$/u, 'Must not contain control characters');
+
 /** A listing's id, also the `:id` of listing routes: a uuid (the data uses v4). */
 export const listingIdSchema = z.uuid();
 
@@ -56,3 +70,25 @@ export const listingAvailabilitySchema = z.object({
 });
 
 export type ListingAvailability = z.infer<typeof listingAvailabilitySchema>;
+
+/**
+ * A host's listing edit: the editor always sends every editable field, so the
+ * studio rule sees both the type and the bedrooms. Integer fields stop at the
+ * column's range. Lowering `maxGuests` below a booking is checked by the API
+ * (D-014).
+ */
+export const listingUpdateSchema = z
+  .object({
+    // Possible improvement (not in the plan): a maximum title length.
+    title: listingTextSchema,
+    propertyType: propertyTypeSchema,
+    pricePerNightCents: z.number().int().min(0).max(MAX_LISTING_INT),
+    maxGuests: listingDtoSchema.shape.maxGuests,
+    bedrooms: z.number().int().min(0).max(MAX_LISTING_INT),
+  })
+  .refine(
+    ({ propertyType, bedrooms }) => propertyType !== 'studio' || bedrooms === 0,
+    { message: 'A studio has 0 bedrooms', path: ['bedrooms'] },
+  );
+
+export type ListingUpdateInput = z.infer<typeof listingUpdateSchema>;

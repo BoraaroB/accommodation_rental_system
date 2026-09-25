@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  daysBetween,
+  eachDay,
   isIsoDate,
   isoDateSchema,
   parseIsoDate,
@@ -110,5 +112,41 @@ describe('parseIsoDate', () => {
 describe('toIsoDate', () => {
   it('turns the UTC midnight of a date column back into the date', () => {
     expect(toIsoDate(parseIsoDate('2026-10-01'))).toBe('2026-10-01');
+  });
+});
+
+describe('daysBetween', () => {
+  it.each([
+    ['2026-10-01', '2026-10-04', 3],
+    ['2026-10-01', '2026-10-01', 0],
+    ['2026-10-04', '2026-10-01', -3],
+    ['2028-02-28', '2028-03-01', 2],
+    ['2026-12-31', '2027-01-01', 1],
+  ])('daysBetween(%s, %s) is %i', (from, to, days) => {
+    expect(daysBetween(from, to)).toBe(days);
+  });
+});
+
+describe('eachDay', () => {
+  it('lists every day of [from, to), without to', () => {
+    expect(eachDay('2026-12-30', '2027-01-02')).toEqual([
+      '2026-12-30',
+      '2026-12-31',
+      '2027-01-01',
+    ]);
+  });
+
+  it.each([
+    ['2026-10-01', '2026-10-01'],
+    ['2026-10-02', '2026-10-01'],
+  ])('is empty for %s → %s', (from, to) => {
+    expect(eachDay(from, to)).toEqual([]);
+  });
+});
+
+describe('year 0000', () => {
+  it('is not a date: Postgres has no year 0', () => {
+    expect(isIsoDate('0000-12-31')).toBe(false);
+    expect(isIsoDate('0001-01-01')).toBe(true);
   });
 });

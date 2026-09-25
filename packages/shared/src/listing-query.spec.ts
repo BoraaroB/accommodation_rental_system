@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addDays, today } from './date.js';
 import {
   availabilityQuerySchema,
+  hostListingQuerySchema,
   listingQuerySchema,
 } from './listing-query.js';
 
@@ -111,5 +112,26 @@ describe('availabilityQuerySchema', () => {
     expect(issuePaths(availabilityQuerySchema.safeParse(query))).toEqual([
       path,
     ]);
+  });
+});
+
+describe('hostListingQuerySchema', () => {
+  it('trims q', () => {
+    expect(hostListingQuerySchema.parse({ q: ' split ' })).toMatchObject({
+      q: 'split',
+    });
+  });
+
+  it.each(['', '  '])('treats the blank q %j as not sent', (q) => {
+    expect(hostListingQuerySchema.parse({ q })).toEqual({
+      page: 1,
+      pageSize: 24,
+    });
+  });
+
+  it('rejects a q with a NUL byte', () => {
+    expect(
+      issuePaths(hostListingQuerySchema.safeParse({ q: 'a\u0000b' })),
+    ).toEqual(['q']);
   });
 });

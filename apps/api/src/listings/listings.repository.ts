@@ -1,24 +1,25 @@
 import type {
   BookingDto,
+  DateRange,
+  HostListingQuery,
   IsoDate,
   ListingDto,
   ListingQuery,
   ListingSort,
+  ListingUpdateInput,
 } from '@ars/shared';
 
 export const LISTINGS_REPOSITORY = Symbol('LISTINGS_REPOSITORY');
 
-/** Days `[from, to)`: `from` is included and `to` is not, like a stay. */
-export interface DateRange {
-  from: IsoDate;
-  to: IsoDate;
-}
-
-/** The portal's listing filters; a date filter needs both `from` and `to`. */
+/**
+ * The portal's listing filters and the host panel's search `q`; a date filter
+ * needs both `from` and `to`.
+ */
 export type ListingFilters = Pick<
   ListingQuery,
   'city' | 'guests' | 'minPriceCents' | 'maxPriceCents' | 'from' | 'to'
->;
+> &
+  Pick<HostListingQuery, 'q'>;
 
 /** The filters and sort of a list query, with its page turned into rows. */
 export interface ListingSearch extends ListingFilters {
@@ -51,4 +52,15 @@ export interface ListingsRepository {
     id: string,
     range: DateRange,
   ): Promise<ListingOccupancy | null>;
+  /**
+   * The most guests of a non-cancelled booking of the listing, past ones
+   * included; 0 without bookings, `null` when the tenant has no such listing.
+   */
+  findMaxActiveGuests(tenantId: string, id: string): Promise<number | null>;
+  /** Writes the editable fields and returns the listing as it is now. */
+  update(
+    tenantId: string,
+    id: string,
+    changes: ListingUpdateInput,
+  ): Promise<ListingDto>;
 }

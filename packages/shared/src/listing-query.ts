@@ -1,8 +1,13 @@
 import { z } from 'zod';
-import type { IsoDate } from './contracts.js';
-import { isoDateSchema, today } from './date.js';
+import {
+  checkOptionalRange,
+  checkUpcomingRange,
+  upcomingDateRangeSchema,
+} from './date-range.js';
+import { isoDateSchema } from './date.js';
+import { listingTextSchema, MAX_LISTING_INT } from './listing.js';
 import { paginationQuerySchema } from './pagination.js';
-import { emptyAsUnset } from './query-param.js';
+import { blankAsUnset, emptyAsUnset } from './query-param.js';
 
 export const listingSortSchema = z.enum([
   'newest',
@@ -11,34 +16,9 @@ export const listingSortSchema = z.enum([
   'rating_desc',
 ]);
 
-/** The largest price the database stores: the column is a 32-bit integer. */
-const MAX_CENTS = 2_147_483_647;
-
 const centsSchema = emptyAsUnset(
-  z.coerce.number().int().min(0).max(MAX_CENTS).optional(),
+  z.coerce.number().int().min(0).max(MAX_LISTING_INT).optional(),
 );
-
-/** Adds the issues of a stay-like range `[from, to)`: `to` after `from`, `from` not in the past. */
-function checkDateRange(
-  { from, to }: { from: IsoDate; to: IsoDate },
-  ctx: z.RefinementCtx,
-): void {
-  // `YYYY-MM-DD` strings compare in calendar order.
-  if (to <= from) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'Must be after from',
-      path: ['to'],
-    });
-  }
-  if (from < today()) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'Must not be in the past',
-      path: ['from'],
-    });
-  }
-}
 
 /**
  * The portal's listing filters, sort and page: the URL search parameters of
@@ -47,13 +27,7 @@ function checkDateRange(
  */
 export const listingQuerySchema = paginationQuerySchema
   .extend({
-    city: z
-      .string()
-      .trim()
-      .min(1)
-      // Postgres text cannot hold a NUL byte; no city has a control character.
-      .regex(/^\P{Cc}*$/u, 'Must not contain control characters')
-      .optional(),
+    city: listingTextSchema.optional(),
     guests: emptyAsUnset(z.coerce.number().int().min(1).max(12).optional()),
     minPriceCents: centsSchema,
     maxPriceCents: centsSchema,
@@ -62,16 +36,8 @@ export const listingQuerySchema = paginationQuerySchema
     sort: listingSortSchema.default('newest'),
   })
   .superRefine((query, ctx) => {
-    const { from, to, minPriceCents, maxPriceCents } = query;
-    if (from !== undefined && to !== undefined) {
-      checkDateRange({ from, to }, ctx);
-    } else if (from !== undefined || to !== undefined) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'from and to go together',
-        path: [from === undefined ? 'from' : 'to'],
-      });
-    }
+    checkOptionalRange(query, ctx, checkUpcomingRange);
+    const { minPriceCents, maxPriceCents } = query;
     if (
       minPriceCents !== undefined &&
       maxPriceCents !== undefined &&
@@ -86,10 +52,17 @@ export const listingQuerySchema = paginationQuerySchema
   });
 
 /** The range of `GET /t/:tenantSlug/listings/:id/availability`: `[from, to)`, from today on. */
-export const availabilityQuerySchema = z
-  .object({ from: isoDateSchema, to: isoDateSchema })
-  .superRefine(checkDateRange);
+export const availabilityQuerySchema = upcomingDateRangeSchema;
+
+/**
+ * The host panel's listing table: a page, optionally searched by `q`, which
+ * matches the title or the city regardless of case.
+ */
+export const hostListingQuerySchema = paginationQuerySchema.extend({
+  q: blankAsUnset(listingTextSchema.optional()),
+});
 
 export type ListingSort = z.infer<typeof listingSortSchema>;
 export type ListingQuery = z.infer<typeof listingQuerySchema>;
 export type AvailabilityQuery = z.infer<typeof availabilityQuerySchema>;
+export type HostListingQuery = z.infer<typeof hostListingQuerySchema>;

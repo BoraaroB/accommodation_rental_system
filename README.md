@@ -62,6 +62,8 @@ Sign in with a demo account: `POST /api/v1/auth/login` with `{ "email", "passwor
 
 The public portal needs no sign-in: `GET /api/v1/tenants` lists the portals, and `GET /api/v1/t/adriatic/listings?city=Zagreb&guests=2&from=YYYY-MM-DD&to=YYYY-MM-DD&sort=price_asc` searches one of them. The routes are listed in [architecture.md](docs/architecture.md#api-modules).
 
+The host panel needs a host's token for that tenant (or the superadmin's): `GET /api/v1/t/adriatic/host/listings?q=split` searches the listings, `PATCH /api/v1/t/adriatic/host/listings/:id` edits one, `POST /api/v1/t/adriatic/host/listings/:id/blocked-days` with `{ "from", "to" }` blocks the days of `[from, to)` and `GET /api/v1/t/adriatic/host/bookings?status=confirmed` lists the bookings.
+
 The e2e tests read `apps/api/.env.test` instead of `.env`:
 
 ```bash

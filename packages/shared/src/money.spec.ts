@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eurosToCents } from './money.js';
+import { eurosToCents, stayTotalCents } from './money.js';
 
 describe('eurosToCents', () => {
   it.each([
@@ -39,4 +39,10 @@ describe('eurosToCents', () => {
       expect(() => eurosToCents(euros)).toThrow(RangeError);
     },
   );
+});
+
+describe('stayTotalCents', () => {
+  it('multiplies the nights by the price per night', () => {
+    expect(stayTotalCents('2026-12-30', '2027-01-02', 12000)).toBe(36000);
+  });
 });

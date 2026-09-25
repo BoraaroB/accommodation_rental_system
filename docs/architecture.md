@@ -79,6 +79,20 @@ Features 5–8 add one module per entity — `users`, `tenants`, `listings`, `bo
 
 Inputs are validated by `listingQuerySchema`, `availabilityQuerySchema` and `listingIdSchema` from `@ars/shared`; the web app uses the same schemas.
 
+**Host panel** (feature 7), signed-in only; every controller runs `@UseGuards(TenantGuard, PermissionsGuard)`, so a host of the tenant and the superadmin get in, a client or another tenant's host gets 403 ([D-005](decisions.md#d-005-a-host-manages-all-listings-of-their-tenant)):
+
+| Route (under `/api/v1`)                                     | Permission          | Module / controller                       | Response                                                                                                                                                                              |
+| ----------------------------------------------------------- | ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /t/:tenantSlug/host/listings?q`                        | `listing:read`      | `listings/` · `HostListingsController`    | `Page<ListingDto>`, newest first ([D-050](decisions.md#d-050-the-host-listing-search-matches-the-title-or-the-city))                                                                  |
+| `GET /t/:tenantSlug/host/listings/:id`                      | `listing:read`      | `listings/` · `HostListingsController`    | `ListingDto`; 404 `LISTING_NOT_FOUND`                                                                                                                                                 |
+| `PATCH /t/:tenantSlug/host/listings/:id`                    | `listing:update`    | `listings/` · `HostListingsController`    | `ListingDto`; 409 `MAX_GUESTS_BELOW_BOOKING` ([D-014](decisions.md#d-014-listing-edits-cannot-break-booking-invariants))                                                              |
+| `GET /t/:tenantSlug/host/listings/:id/blocked-days`         | `blocked-day:read`  | `blocked-days/` · `BlockedDaysController` | `{ from, to, days }`; past ranges allowed                                                                                                                                             |
+| `POST /t/:tenantSlug/host/listings/:id/blocked-days`        | `blocked-day:write` | `blocked-days/` · `BlockedDaysController` | 201 `{ from, to, days }`; 409 `DAY_ALREADY_BOOKED` ([D-010](decisions.md#d-010-blocked-days-one-row-per-day), [D-049](decisions.md#d-049-a-blocking-request-covers-at-most-366-days)) |
+| `DELETE /t/:tenantSlug/host/listings/:id/blocked-days`      | `blocked-day:write` | `blocked-days/` · `BlockedDaysController` | 204                                                                                                                                                                                   |
+| `GET /t/:tenantSlug/host/bookings?listingId&status&from&to` | `booking:read`      | `bookings/` · `BookingsController`        | `Page<HostBooking>` by check-in ([D-048](decisions.md#d-048-host-bookings-carry-the-listings-title-and-a-total-at-its-current-price))                                                 |
+
+`BlockedDaysService` asks the exported `ListingsService` whether the listing exists in the tenant and which days its active bookings take; `BlockedDaysRepository` touches only blocked-day rows. Inputs are validated by `hostListingQuerySchema`, `listingUpdateSchema`, `dateRangeSchema`, `blockDaysSchema`, `upcomingDateRangeSchema` and `hostBookingQuerySchema`.
+
 ## Request pipeline (API)
 
 ```mermaid
@@ -118,6 +132,8 @@ Derived at read time from bookings and blocked days ([D-009](decisions.md#d-009-
 - a listing is free for `[from, to)` when no active booking overlaps and no day in the range is blocked.
 
 In the API (feature 6) one pair of Prisma predicates, `activeStaysOverlapping` and `blockedDaysWithin` (`listings/build-listing-query.ts`), serves both the list's date filter (inside `none`) and the listing's calendar (as relation selects). The pure `unavailableDays` turns the stays and blocked days it loads into the taken days of the range.
+
+The host panel (feature 7) reuses them: blocking checks the range with the same active-stay predicate (a booked day is a 409, a day under a cancelled booking may be blocked), unblocking and the blocked-day list use `blockedDaysWithin`, and the host booking filter uses `staysOverlapping` — the same overlap without the status.
 
 ## Web structure
 

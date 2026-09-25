@@ -1,4 +1,9 @@
-import { toIsoDate, type ListingDto } from '@ars/shared';
+import {
+  toIsoDate,
+  type DateRange,
+  type ListingDto,
+  type ListingUpdateInput,
+} from '@ars/shared';
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../core/database/prisma.service.js';
 import {
@@ -9,7 +14,6 @@ import {
 } from './build-listing-query.js';
 import { listingSelect, toListingDto } from './listings.mapper.js';
 import type {
-  DateRange,
   ListingOccupancy,
   ListingSearch,
   ListingsRepository,
@@ -88,5 +92,42 @@ export class PrismaListingsRepository implements ListingsRepository {
       })),
       blockedDays: listing.blockedDays.map(({ day }) => toIsoDate(day)),
     };
+  }
+
+  async findMaxActiveGuests(
+    tenantId: string,
+    id: string,
+  ): Promise<number | null> {
+    const listing = await this.prisma.listing.findFirst({
+      where: { id, tenantId },
+      select: {
+        bookings: {
+          where: { status: { not: 'cancelled' } },
+          orderBy: { guests: 'desc' },
+          take: 1,
+          select: { guests: true },
+        },
+      },
+    });
+    if (listing === null) {
+      return null;
+    }
+    return listing.bookings[0]?.guests ?? 0;
+  }
+
+  async update(
+    tenantId: string,
+    id: string,
+    changes: ListingUpdateInput,
+  ): Promise<ListingDto> {
+    // Every field by name, so nothing else of the listing can be written.
+    const { title, propertyType, pricePerNightCents, maxGuests, bedrooms } =
+      changes;
+    const row = await this.prisma.listing.update({
+      where: { id, tenantId },
+      data: { title, propertyType, pricePerNightCents, maxGuests, bedrooms },
+      select: listingSelect,
+    });
+    return toListingDto(row);
   }
 }

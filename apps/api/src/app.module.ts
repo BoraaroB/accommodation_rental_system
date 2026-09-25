@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AccessModule } from './access/access.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { BlockedDaysModule } from './blocked-days/blocked-days.module.js';
+import { BookingsModule } from './bookings/bookings.module.js';
 import { AppConfigModule } from './core/config/config.module.js';
 import { DatabaseModule } from './core/database/database.module.js';
 import { ErrorsModule } from './core/errors/errors.module.js';
@@ -32,6 +34,8 @@ import { UsersModule } from './users/users.module.js';
     UsersModule,
     TenantsModule,
     ListingsModule,
+    BlockedDaysModule,
+    BookingsModule,
   ],
 })
 export class AppModule {}

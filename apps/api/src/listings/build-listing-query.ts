@@ -1,21 +1,27 @@
-import { parseIsoDate, type ListingSort } from '@ars/shared';
+import { parseIsoDate, type DateRange, type ListingSort } from '@ars/shared';
 import type { Prisma } from '../generated/prisma/client.js';
-import type { DateRange, ListingFilters } from './listings.repository.js';
+import type { ListingFilters } from './listings.repository.js';
 
 /**
- * Bookings that take a day of `[from, to)`: not cancelled, and
+ * Stays that take a day of `[from, to)`, whatever their status:
  * `checkIn < to AND checkOut > from`, so a stay that ends on `from` does not
- * count (D-009).
+ * count.
  */
-export function activeStaysOverlapping({
+export function staysOverlapping({
   from,
   to,
 }: DateRange): Prisma.BookingWhereInput {
   return {
-    status: { not: 'cancelled' },
     checkIn: { lt: parseIsoDate(to) },
     checkOut: { gt: parseIsoDate(from) },
   };
+}
+
+/** Bookings that take a day of `[from, to)`: overlapping and not cancelled (D-009). */
+export function activeStaysOverlapping(
+  range: DateRange,
+): Prisma.BookingWhereInput {
+  return { status: { not: 'cancelled' }, ...staysOverlapping(range) };
 }
 
 /** Blocked days within `[from, to)`. */
@@ -26,13 +32,30 @@ export function blockedDaysWithin({
   return { day: { gte: parseIsoDate(from), lt: parseIsoDate(to) } };
 }
 
-/** The `where` of the portal's listing list: always the tenant, then each filter given. */
+/**
+ * `contains` becomes a LIKE pattern without escaping, so `%` and `_` in the
+ * search would be wildcards. Backslash is Postgres' default LIKE escape.
+ */
+function escapeLikePattern(text: string): string {
+  return text.replace(/[\\%_]/g, (char) => `\\${char}`);
+}
+
+/** The `where` of a listing list: always the tenant, then each filter given. */
 export function buildListingWhere(
   tenantId: string,
   filters: ListingFilters,
 ): Prisma.ListingWhereInput {
-  const { city, guests, minPriceCents, maxPriceCents, from, to } = filters;
+  const { q, city, guests, minPriceCents, maxPriceCents, from, to } = filters;
   const where: Prisma.ListingWhereInput = { tenantId };
+  if (q !== undefined) {
+    // Possible improvement (not in the plan): a pg_trgm index once a tenant's
+    // table is too large to scan for a substring.
+    const text = escapeLikePattern(q);
+    where.OR = [
+      { title: { contains: text, mode: 'insensitive' } },
+      { city: { contains: text, mode: 'insensitive' } },
+    ];
+  }
   if (city !== undefined) {
     where.city = city;
   }
