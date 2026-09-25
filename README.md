@@ -64,6 +64,8 @@ The public portal needs no sign-in: `GET /api/v1/tenants` lists the portals, and
 
 The host panel needs a host's token for that tenant (or the superadmin's): `GET /api/v1/t/adriatic/host/listings?q=split` searches the listings, `PATCH /api/v1/t/adriatic/host/listings/:id` edits one, `POST /api/v1/t/adriatic/host/listings/:id/blocked-days` with `{ "from", "to" }` blocks the days of `[from, to)` and `GET /api/v1/t/adriatic/host/bookings?status=confirmed` lists the bookings.
 
+The admin panel needs the superadmin's token: `POST /api/v1/admin/tenants` with `{ "slug", "name" }` (and optionally `logoUrl`, `primaryColor`, `contactEmail`) creates a tenant whose portal works at once, `PATCH /api/v1/admin/tenants/:tenantId` changes the fields it is sent, and `POST /api/v1/admin/tenants/:tenantId/hosts` with `{ "email", "name", "password" }` adds a host — an existing account keeps its password (`accountCreated: false`).
+
 The e2e tests read `apps/api/.env.test` instead of `.env`:
 
 ```bash

@@ -5,9 +5,10 @@ import {
   upcomingDateRangeSchema,
 } from './date-range.js';
 import { isoDateSchema } from './date.js';
-import { listingTextSchema, MAX_LISTING_INT } from './listing.js';
+import { MAX_LISTING_INT } from './listing.js';
 import { paginationQuerySchema } from './pagination.js';
 import { blankAsUnset, emptyAsUnset } from './query-param.js';
+import { plainTextSchema } from './text.js';
 
 export const listingSortSchema = z.enum([
   'newest',
@@ -27,7 +28,7 @@ const centsSchema = emptyAsUnset(
  */
 export const listingQuerySchema = paginationQuerySchema
   .extend({
-    city: listingTextSchema.optional(),
+    city: plainTextSchema.optional(),
     guests: emptyAsUnset(z.coerce.number().int().min(1).max(12).optional()),
     minPriceCents: centsSchema,
     maxPriceCents: centsSchema,
@@ -59,7 +60,7 @@ export const availabilityQuerySchema = upcomingDateRangeSchema;
  * matches the title or the city regardless of case.
  */
 export const hostListingQuerySchema = paginationQuerySchema.extend({
-  q: blankAsUnset(listingTextSchema.optional()),
+  q: blankAsUnset(plainTextSchema.optional()),
 });
 
 export type ListingSort = z.infer<typeof listingSortSchema>;

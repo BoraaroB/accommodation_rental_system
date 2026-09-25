@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { plainTextSchema } from './text.js';
 
 /** bcrypt hashes only the first 72 bytes of a password and ignores the rest. */
 const PASSWORD_MAX_BYTES = 72;
@@ -26,12 +27,19 @@ export const emailSchema = z
   .toLowerCase()
   .pipe(z.email().max(254));
 
-const passwordSchema = z
+/** A password as an account is created with it: 8 characters to 72 bytes. */
+export const passwordSchema = z
   .string()
   .min(8)
   .refine((value) => utf8ByteLength(value) <= PASSWORD_MAX_BYTES, {
     message: `Too long: expected at most ${PASSWORD_MAX_BYTES} bytes`,
   });
+
+/** A person's name on their account. */
+export const userNameSchema = plainTextSchema.max(100);
+
+/** A user's id: a uuid. */
+export const userIdSchema = z.uuid();
 
 /**
  * Registration. It always creates a client: a field such as `isSuperadmin` is
@@ -40,7 +48,7 @@ const passwordSchema = z
 export const registerSchema = z.object({
   email: emailSchema,
   password: passwordSchema,
-  name: z.string().trim().min(1).max(100),
+  name: userNameSchema,
 });
 
 /** Sign-in. The password rules are not repeated: a wrong password is a 401, not a 400. */
@@ -66,7 +74,7 @@ export const hostedTenantSchema = z.object({
  * checks permissions on every request (D-007).
  */
 export const userProfileSchema = z.object({
-  id: z.uuid(),
+  id: userIdSchema,
   email: z.email(),
   name: z.string().min(1),
   isSuperadmin: z.boolean(),

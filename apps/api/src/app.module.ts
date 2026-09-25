@@ -10,6 +10,7 @@ import { LoggingModule } from './core/logging/logging.module.js';
 import { RequestContextModule } from './core/request-context/request-context.module.js';
 import { ValidationModule } from './core/validation/validation.module.js';
 import { HealthModule } from './health/health.module.js';
+import { HostsModule } from './hosts/hosts.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { TenantsModule } from './tenants/tenants.module.js';
 import { UsersModule } from './users/users.module.js';
@@ -36,6 +37,7 @@ import { UsersModule } from './users/users.module.js';
     ListingsModule,
     BlockedDaysModule,
     BookingsModule,
+    HostsModule,
   ],
 })
 export class AppModule {}

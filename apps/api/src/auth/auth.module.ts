@@ -15,6 +15,7 @@ import { TOKEN_SIGNER } from './token-signer.js';
 /**
  * "Who you are" (D-007): registration, sign-in, access tokens and the global
  * `AuthGuard`, so every route needs a signed-in user unless it is `@Public()`.
+ * Exports the password hasher for accounts created elsewhere (hosts).
  */
 @Module({
   imports: [
@@ -38,5 +39,6 @@ import { TOKEN_SIGNER } from './token-signer.js';
     { provide: TOKEN_SIGNER, useClass: JwtTokenSigner },
     { provide: APP_GUARD, useClass: AuthGuard },
   ],
+  exports: [PASSWORD_HASHER],
 })
 export class AuthModule {}

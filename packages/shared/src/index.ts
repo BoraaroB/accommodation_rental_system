@@ -10,7 +10,10 @@ export {
   emailSchema,
   hostedTenantSchema,
   loginSchema,
+  passwordSchema,
   registerSchema,
+  userIdSchema,
+  userNameSchema,
   userProfileSchema,
   type AccessToken,
   type HostedTenant,
@@ -32,6 +35,14 @@ export {
   hostBookingSchema,
   type HostBooking,
 } from './booking.js';
+export {
+  addedHostSchema,
+  hostInputSchema,
+  tenantHostSchema,
+  type AddedHost,
+  type HostInput,
+  type TenantHost,
+} from './host.js';
 export {
   hostBookingQuerySchema,
   type HostBookingQuery,
@@ -81,7 +92,15 @@ export {
   type Page,
 } from './pagination.js';
 export {
+  adminTenantSchema,
   publicTenantSchema,
+  RESERVED_TENANT_SLUGS,
+  tenantCreateSchema,
+  tenantIdSchema,
   tenantSlugSchema,
+  tenantUpdateSchema,
+  type AdminTenant,
   type PublicTenant,
+  type TenantCreateInput,
+  type TenantUpdateInput,
 } from './tenant.js';
