@@ -31,17 +31,3 @@ export class TenantAccessRoutesController {
     return { reached: true };
   }
 }
-
-/**
- * A platform route (no tenant) that exists only in the e2e tests
- * (`/api/v1/access-check`), like the admin panel (feature 8) will be.
- */
-@Controller('access-check')
-@UseGuards(PermissionsGuard)
-export class PlatformAccessRoutesController {
-  @Get()
-  @RequirePermissions('tenant:read')
-  check(@CurrentUser() user: AuthUser): { userId: string } {
-    return { userId: user.id };
-  }
-}

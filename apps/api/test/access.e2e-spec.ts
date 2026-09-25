@@ -18,10 +18,7 @@ import {
   USERS_REPOSITORY,
   type UsersRepository,
 } from '../src/users/users.repository.js';
-import {
-  PlatformAccessRoutesController,
-  TenantAccessRoutesController,
-} from './access-routes.controller.js';
+import { TenantAccessRoutesController } from './access-routes.controller.js';
 
 const PASSWORD = 'e2e-password-1';
 
@@ -61,10 +58,7 @@ describe('Access: who you are vs what you may do (e2e)', () => {
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule, TenantsModule, AccessModule],
-      controllers: [
-        TenantAccessRoutesController,
-        PlatformAccessRoutesController,
-      ],
+      controllers: [TenantAccessRoutesController],
     }).compile();
     app = moduleRef.createNestApplication<NestExpressApplication<Server>>();
     configureApp(app);
@@ -144,23 +138,6 @@ describe('Access: who you are vs what you may do (e2e)', () => {
         403,
       );
       expectApiError(res, 403, 'INSUFFICIENT_PERMISSIONS');
-    });
-  });
-
-  describe('on a platform route', () => {
-    it('lets a superadmin in', async () => {
-      const res = await get('/api/v1/access-check', 'admin').expect(200);
-      expect(res.body).toEqual({ userId: ids.admin });
-    });
-
-    it.each(['hostA', 'client'])('answers %s with 403', async (name) => {
-      const res = await get('/api/v1/access-check', name).expect(403);
-      expectApiError(res, 403, 'INSUFFICIENT_PERMISSIONS');
-    });
-
-    it('answers an anonymous caller with 401', async () => {
-      const res = await get('/api/v1/access-check').expect(401);
-      expectApiError(res, 401, 'AUTHENTICATION_REQUIRED');
     });
   });
 

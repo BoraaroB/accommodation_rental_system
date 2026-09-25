@@ -64,7 +64,7 @@ apps/api/src/
 | `DatabaseModule`       | `PrismaService` (exported)                                                 | —                      |
 | `HealthModule`         | `HealthController`                                                         | —                      |
 
-Features 5–8 add one module per entity — `users`, `tenants`, `listings`, `bookings`, `blocked-days` — plus `auth`, each in `src/<entities>/`, generated with the Nest CLI by the feature that gives it its first provider. Modules with a Prisma repository import `DatabaseModule`. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma.
+Features 5–8 add one module per entity — `users`, `tenants`, `listings`, `bookings`, `blocked-days`, `hosts` — plus `auth`, each in `src/<entities>/`, generated with the Nest CLI by the feature that gives it its first provider. Modules with a Prisma repository import `DatabaseModule`. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma.
 
 **Public portal** (feature 6), all `@Public()`; the tenant routes go through `TenantGuard` ([D-044](decisions.md#d-044-a-portal-shows-only-its-own-tenants-listings)):
 
@@ -93,6 +93,21 @@ Inputs are validated by `listingQuerySchema`, `availabilityQuerySchema` and `lis
 
 `BlockedDaysService` asks the exported `ListingsService` whether the listing exists in the tenant and which days its active bookings take; `BlockedDaysRepository` touches only blocked-day rows. Inputs are validated by `hostListingQuerySchema`, `listingUpdateSchema`, `dateRangeSchema`, `blockDaysSchema`, `upcomingDateRangeSchema` and `hostBookingQuerySchema`.
 
+**Admin panel** (feature 8), signed-in only; platform routes without a tenant, so every controller runs `@UseGuards(PermissionsGuard)` alone and only the superadmin gets in — a client or any host gets 403 ([D-051](decisions.md#d-051-the-admin-panel-addresses-tenants-by-id)):
+
+| Route (under `/api/v1`)                         | Permission     | Module / controller                   | Response                                                                                                                                          |
+| ----------------------------------------------- | -------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /admin/tenants`                            | `tenant:read`  | `tenants/` · `AdminTenantsController` | `AdminTenant[]`, by slug                                                                                                                          |
+| `GET /admin/tenants/:tenantId`                  | `tenant:read`  | `tenants/` · `AdminTenantsController` | `AdminTenant`; 404 `TENANT_NOT_FOUND`                                                                                                             |
+| `POST /admin/tenants`                           | `tenant:write` | `tenants/` · `AdminTenantsController` | 201 `AdminTenant`; 409 `SLUG_TAKEN` ([D-028](decisions.md#d-028-tenant-slugs-are-kebab-case-with-reserved-words))                                 |
+| `PATCH /admin/tenants/:tenantId`                | `tenant:write` | `tenants/` · `AdminTenantsController` | `AdminTenant`; a merge patch ([D-052](decisions.md#d-052-tenant-configuration-is-edited-as-a-merge-patch)); 409 `SLUG_TAKEN`                      |
+| `DELETE /admin/tenants/:tenantId`               | `tenant:write` | `tenants/` · `AdminTenantsController` | 204; cascades, users stay ([D-029](decisions.md#d-029-deleting-a-tenant-cascades-users-stay))                                                     |
+| `GET /admin/tenants/:tenantId/hosts`            | `host:read`    | `hosts/` · `HostsController`          | `TenantHost[]`, by e-mail                                                                                                                         |
+| `POST /admin/tenants/:tenantId/hosts`           | `host:write`   | `hosts/` · `HostsController`          | 201 `AddedHost` (`accountCreated`); 409 `ALREADY_HOST` ([D-053](decisions.md#d-053-adding-a-host-reuses-an-existing-account-without-changing-it)) |
+| `DELETE /admin/tenants/:tenantId/hosts/:userId` | `host:write`   | `hosts/` · `HostsController`          | 204; 404 `HOST_NOT_FOUND`; the account stays                                                                                                      |
+
+`HostsService` checks the tenant through the exported `TenantsService`, reads accounts through `USERS_REPOSITORY` and hashes a new host's password with the `PASSWORD_HASHER` that `AuthModule` exports; `HostsRepository` writes memberships, and a new account together with its membership. Inputs are validated by `tenantIdSchema`, `tenantCreateSchema`, `tenantUpdateSchema`, `userIdSchema` and `hostInputSchema`.
+
 ## Request pipeline (API)
 
 ```mermaid
@@ -110,8 +125,8 @@ flowchart LR
 ```
 
 - **Authentication** (feature 5): a global `AuthGuard` verifies the JWT (`sub`, `email`); `@Public()` opts a route out.
-- **Tenant resolution** (feature 5): `TenantGuard` resolves `:tenantSlug` and exposes the tenant with `@CurrentTenant()`.
-- **Authorization** (feature 5): `PermissionsGuard` checks `@RequirePermissions(...)` against the role computed for the URL's tenant — superadmin, host (membership) or client — through `ROLE_PERMISSIONS` ([D-007](decisions.md#d-007-roles-are-not-in-the-token)).
+- **Tenant resolution** (feature 5): `TenantGuard` resolves `:tenantSlug` and exposes the tenant with `@CurrentTenant()`. Platform routes (the admin panel) have no tenant and skip it.
+- **Authorization** (feature 5): `PermissionsGuard` checks `@RequirePermissions(...)` against the role computed for the URL's tenant — superadmin, host (membership) or client — through `ROLE_PERMISSIONS` ([D-007](decisions.md#d-007-roles-are-not-in-the-token)); on a platform route the role is superadmin or client.
 - **Errors** (features 2–3): a catch-all filter and a Prisma filter return the `apiErrorSchema` shape; 5xx never include a stack trace ([D-019](decisions.md#d-019-one-error-format-for-the-whole-api)).
 - **Logging** (feature 2): request id in every log line, the response header and the error body; one log line per request ([D-020](decisions.md#d-020-logging-with-the-built-in-consolelogger), [D-034](decisions.md#d-034-request-id-through-a-response-header-and-asynclocalstorage)). `RequestId` and `RequestLogger` are registered with `app.use` so they run before CORS and the body parser; the request context is entered after the body parser, because an `AsyncLocalStorage` context does not survive its stream callbacks.
 

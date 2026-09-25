@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { ListingDto } from './contracts.js';
 import { isoDateSchema } from './date.js';
 import { pageSchema } from './pagination.js';
+import { plainTextSchema } from './text.js';
 
 /** The only currency in the data (display only; there are no exchange rates). */
 export const currencySchema = z.literal('EUR');
@@ -16,17 +17,6 @@ export const propertyTypeSchema = z.enum([
 
 /** The largest value of a listing's integer columns (Postgres `integer`). */
 export const MAX_LISTING_INT = 2_147_483_647;
-
-/**
- * A listing's text (title, city) as a request sends it: trimmed, not blank,
- * without control characters — Postgres text cannot hold a NUL byte, and no
- * title or city has a control character.
- */
-export const listingTextSchema = z
-  .string()
-  .trim()
-  .min(1)
-  .regex(/^\P{Cc}*$/u, 'Must not contain control characters');
 
 /** A listing's id, also the `:id` of listing routes: a uuid (the data uses v4). */
 export const listingIdSchema = z.uuid();
@@ -80,7 +70,7 @@ export type ListingAvailability = z.infer<typeof listingAvailabilitySchema>;
 export const listingUpdateSchema = z
   .object({
     // Possible improvement (not in the plan): a maximum title length.
-    title: listingTextSchema,
+    title: plainTextSchema,
     propertyType: propertyTypeSchema,
     pricePerNightCents: z.number().int().min(0).max(MAX_LISTING_INT),
     maxGuests: listingDtoSchema.shape.maxGuests,

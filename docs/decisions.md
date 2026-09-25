@@ -63,9 +63,9 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-008: Registration creates clients; the superadmin creates hosts
 
-- **Status:** Implemented for registration (feature 5); hosts are created in feature 8
+- **Status:** Implemented (registration in feature 5, hosts in feature 8)
 - **Context:** "Registration is for clients — host accounts are created by the superadmin."
-- **Decision:** `POST /auth/register` always creates a plain client. Hosts are created (or an existing user is added as a host) only through the admin panel.
+- **Decision:** `POST /auth/register` always creates a plain client. Hosts are created (or an existing user is added as a host) only through the admin panel ([D-053](#d-053-adding-a-host-reuses-an-existing-account-without-changing-it)).
 - **Consequences:** No self-service privilege escalation.
 
 ## D-009: Availability is derived at read time
@@ -204,13 +204,14 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-028: Tenant slugs are kebab-case, with reserved words
 
-- **Status:** Implemented for the format check on lookup (feature 6); creation, uniqueness and reserved words follow in feature 8
-- **Decision:** A slug must be kebab-case and unique (duplicate → 409 `SLUG_TAKEN`). `admin`, `api`, `login` and `register` are reserved, so `/admin` never collides with `/:tenantSlug`. The shared `tenantSlugSchema` holds the format; `TenantsService.getBySlug` answers any other value with 404 `TENANT_NOT_FOUND` without querying the database.
+- **Status:** Implemented (the lookup in feature 6; creation, editing, uniqueness, reserved words and the length limit in feature 8)
+- **Decision:** A slug must be kebab-case, at most 63 characters, and unique (duplicate → 409 `SLUG_TAKEN`). `admin`, `api`, `login` and `register` are reserved, so `/admin` never collides with `/:tenantSlug`. The shared `tenantSlugSchema` holds all of these rules, so a reserved or too long slug is a 400 when it is written; `TenantsService.getBySlug` answers any value the schema rejects with 404 `TENANT_NOT_FOUND` without querying the database. The slug can be changed; the old portal URL is a 404 from then on.
 - **Consequences:** Portal URLs are predictable and cannot shadow application routes. A malformed slug (for example one with a NUL byte, which Postgres text rejects) is a 404, not a 500.
+- **Length (feature 8):** 63 is the length of a DNS label, so a slug could also become a subdomain. Decided by the repository owner after the review showed that a slug of about 4,000 characters exceeded the row size of the unique index and made creation a 500. Two creations racing for one slug get 201 and 409 `UNIQUE_VIOLATION` (the Prisma filter), as registration does for e-mails.
 
 ## D-029: Deleting a tenant cascades; users stay
 
-- **Status:** Implemented in feature 3 (cascading foreign keys); the admin deletion follows in feature 8
+- **Status:** Implemented (cascading foreign keys in feature 3, `DELETE /admin/tenants/:tenantId` in feature 8)
 - **Decision:** Deleting a tenant cascades to its listings, bookings, blocked days and host memberships. Users are not deleted, because identity is global ([D-003](#d-003-global-client-identity)). The admin UI asks for the slug to be typed as confirmation.
 - **Consequences:** No orphaned tenant data; a person who hosted the deleted tenant keeps their account.
 
@@ -322,7 +323,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - A handler behind `PermissionsGuard` without `@RequirePermissions` is denied (403), even to a superadmin.
   - Permissions: `listing:read|update`, `blocked-day:read|write`, `booking:read` (host panel); `tenant:read|write`, `host:read|write` (admin panel). `ROLE_PERMISSIONS`: a client has none (the portal is public), a host has the host-panel set, a superadmin has every permission on every tenant.
   - Error codes: 401 `AUTHENTICATION_REQUIRED` (no Bearer token) or `INVALID_TOKEN` (bad, expired, or the user no longer exists); 404 `TENANT_NOT_FOUND`; 403 `INSUFFICIENT_PERMISSIONS`.
-- **Consequences:** The checks a route needs are visible on its controller. The one gap is a controller that uses `@RequirePermissions` but forgets `PermissionsGuard`; every guarded controller therefore gets e2e cases for 401 and 403 (features 7 and 8). The guards were tested in feature 5 through test-only routes.
+- **Consequences:** The checks a route needs are visible on its controller. The one gap is a controller that uses `@RequirePermissions` but forgets `PermissionsGuard`; every guarded controller therefore gets e2e cases for 401 and 403 (features 7 and 8). The guards were tested in feature 5 through test-only routes; since feature 8 the platform case is covered by the admin panel's e2e, and only the tenant test route remains.
 
 ## D-042: Access tokens, registration and sign-in
 
@@ -379,7 +380,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Status:** Implemented (feature 6)
 - **Context:** Every portal page needs the tenant's name and branding, and `TenantGuard` already loads the tenant for every tenant route.
 - **Decision:** `TenantGuard` selects the public configuration (logo URL, primary colour, contact e-mail, currency) with the slug lookup, so `GET /t/:tenantSlug` needs no second query. The response (`PublicTenant`) and `GET /tenants` leave out the tenant's `id`.
-- **Consequences:** Four more columns on a lookup that runs anyway. Internal ids stay inside the API; the web app addresses tenants by slug only.
+- **Consequences:** Four more columns on a lookup that runs anyway. Internal ids stay out of the portal, which addresses tenants by slug only; the admin panel uses the id ([D-051](#d-051-the-admin-panel-addresses-tenants-by-id)).
 
 ## D-048: Host bookings carry the listing's title and a total at its current price
 
@@ -405,3 +406,31 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** The host panel's listing table has "search" in the plan, without saying what it searches.
 - **Decision:** `q` matches a substring of the title or the city, regardless of case (Prisma `contains` with `mode: 'insensitive'`). Prisma 7 does not escape `contains`, so `%`, `_` and `\` are escaped before the query and match as plain text. A blank `q` counts as not sent. The table is newest first, like the portal.
 - **Consequences:** A sequential scan over one tenant's listings, trivial at hundreds of rows.
+
+## D-051: The admin panel addresses tenants by id
+
+- **Status:** Implemented (feature 8)
+- **Context:** The plan's admin routes are `/admin/tenants/:id`. The slug is editable, and the tenant route parameter must never be named `id`; a parameter named `tenantSlug` would make `PermissionsGuard` expect `TenantGuard` to have run.
+- **Decision:** Admin routes take `:tenantId` (a uuid; anything else is a 400), and `AdminTenant` is `PublicTenant` plus the `id`. Admin routes are platform routes: `@UseGuards(PermissionsGuard)` without `TenantGuard`, so the role is computed without a tenant — superadmin or client — and a host membership never grants admin access. An unknown id is 404 `TENANT_NOT_FOUND`. The admin lists (`GET /admin/tenants`, `GET .../hosts`) are plain arrays, like the other short lookup lists ([D-045](#d-045-listing-pages-24-by-default-at-most-48-ties-broken-by-id)).
+- **Consequences:** An admin URL survives a slug change. The portal keeps addressing tenants by slug only ([D-047](#d-047-the-portals-configuration-comes-with-the-tenant-lookup)).
+
+## D-052: Tenant configuration is edited as a merge patch
+
+- **Status:** Implemented (feature 8)
+- **Context:** The challenge: "Name and slug are required; anything beyond that is up to you — logo, currency, primary colour, contact email." The plan names `PATCH` without saying whether an edit sends every field.
+- **Decision:**
+  - `POST /admin/tenants` takes `tenantCreateSchema`: `slug` and `name` required; `logoUrl`, `primaryColor` and `contactEmail` may be left out or `null`.
+  - `PATCH /admin/tenants/:tenantId` takes `tenantUpdateSchema`, the same fields all optional, with JSON Merge Patch meaning: a field that is not sent stays as it is, `null` clears an optional field, and an edit without a known field is a 400. Prisma's `update` gives `undefined` and `null` exactly this meaning. Chosen by the repository owner as the HTTP standard for `PATCH`; unlike the listing edit ([D-014](#d-014-listing-edits-cannot-break-booking-invariants)), the tenant has no rule across fields that needs the whole object.
+  - Formats, because the web app renders these values: the logo is an http(s) URL on a domain (`z.httpUrl()`, so `javascript:` and `data:` are rejected), the colour is `#rrggbb` (lowercased), the contact e-mail goes through `emailSchema`. The name is plain text (trimmed, not blank, no control characters). `currency` is not an input: EUR is the only currency, so the database default fills it.
+- **Consequences:** The web form may still send every field; that is a valid patch. A tenant with a new slug moves its portal ([D-028](#d-028-tenant-slugs-are-kebab-case-with-reserved-words)). Text without control characters (`plainTextSchema`) is now one shared rule for listing titles and cities, tenant names and user names; a NUL byte in a registration name was a 500 before feature 8 and is now a 400.
+
+## D-053: Adding a host reuses an existing account without changing it
+
+- **Status:** Implemented (feature 8)
+- **Context:** "Adding host accounts to a tenant. A tenant may have several hosts." Identity is global ([D-003](#d-003-global-client-identity)): the e-mail the superadmin types may already belong to a client, or to the host of another tenant.
+- **Decision:**
+  - `POST /admin/tenants/:tenantId/hosts` always takes `{ email, name, password }` (the registration rules). A new e-mail creates the account and its membership in one nested write, so neither exists without the other. An existing account only gets the membership: its name and password never change, since they belong to that person. The response carries `accountCreated`, so the admin knows when the password was not applied.
+  - An account that already hosts the tenant is 409 `ALREADY_HOST`; removing a user who does not host the tenant is 404 `HOST_NOT_FOUND`. Removing a host deletes only the membership; the account stays and is a client of that tenant from the next request on ([D-007](#d-007-roles-are-not-in-the-token)).
+  - `HostsModule` owns the memberships; it reads accounts through the users repository and hashes with the hasher `AuthModule` exports. The nested write makes `PrismaHostsRepository` a second writer of users, next to `PrismaUsersRepository.create`.
+  - Logs name the user and tenant ids, never the e-mail or the password.
+- **Consequences:** One person can host several tenants and stay a client elsewhere with one account. The superadmin knows a new host's first password; an invitation or a forced password change is a possible improvement.
