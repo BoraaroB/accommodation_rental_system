@@ -1,7 +1,7 @@
 # Feature 7 — API host panel
 
 - **Branch:** `feat/api-host`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #13, 2026-09-25
 
 ## Goal and scope
 
@@ -93,4 +93,16 @@ Found in the review and fixed:
 
 ## Commit message
 
-Pending — recorded after the commit.
+One commit on `feat/api-host`, merged into `main` by merge commit `b42977d` (PR #13).
+
+`cc6f3ff`:
+
+```
+feat(api): add host panel endpoints for listings, calendar and bookings
+
+- Host listings: search by title or city, detail, edit with D-014 rules
+- Blocked days: list, block a range (409 DAY_ALREADY_BOOKED), unblock
+- Host bookings: filtered page with listing title and stay total
+- Shared zod schemas for date ranges, listing edit and host queries
+- Unit tests for services and query builders; e2e for access and 409s
+```
