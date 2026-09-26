@@ -1,0 +1,27 @@
+/*
+ * Design tokens: the only place colour values live. Components use the
+ * utilities these generate (`bg-primary`, `text-muted`, `rounded-card`, …).
+ * Tailwind's default palette is removed, so a raw colour utility does not exist.
+ */
+@theme {
+  --color-*: initial;
+
+  /* Brand colour; a tenant portal overrides it at runtime with its primaryColor. */
+  --color-primary: #0b5cad;
+  --color-on-primary: #ffffff;
+
+  --color-surface: #f5f7fa; /* page background */
+  --color-surface-raised: #ffffff; /* cards, inputs, header */
+  --color-text: #1a1f2b;
+  --color-muted: #5b6474;
+  --color-border: #d6dbe3;
+  --color-danger: #b42318;
+  --color-success: #067647;
+
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+
+  --font-sans:
+    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    sans-serif;
+}

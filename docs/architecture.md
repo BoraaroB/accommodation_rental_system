@@ -152,17 +152,51 @@ The host panel (feature 7) reuses them: blocking checks the range with the same 
 
 ## Web structure
 
-- `app/` — store (`baseApi` + `authSlice` + `uiSlice`), router, providers.
-- `shared/api/` — one `createApi`; features inject their endpoints; `getErrorMessage` narrows errors.
-- `shared/ui/` — the UI kit (variant maps, design tokens only, mobile-first).
-- `shared/config/env.ts` — the only module that reads `import.meta.env`, validated with zod.
-- `features/listings`, `features/auth`, `features/host`, `features/admin` — pages and feature components.
-- Layouts: `PortalLayout` (tenant branding), `HostLayout`, `AdminLayout`.
-- Errors: a root route boundary, layout boundaries and a widget boundary class; `QueryState` for loading / error / empty states.
+`apps/web/src`, organised by feature with conventional folder names ([D-058](decisions.md#d-058-the-web-app-is-organised-by-feature-with-conventional-folder-names)). Feature 9 lays the foundation; features 10–13 add the pages.
+
+```
+main.tsx          root: error hooks, Redux provider, router
+app/              router.ts (all routes), layouts/ (Root, Portal, Host, Admin)
+pages/            route components: NotFoundPage, errors/ (route error boundaries); feature pages from feature 10
+features/<name>/  listings, auth, host, admin: api.ts (injected endpoints), components/, hooks/
+components/       shared components: ui/ (the UI kit), Toasts
+hooks/            hooks shared by several features (created with the first one)
+store/            makeStore (baseApi + ui slice + rtkErrorMiddleware), typed hooks; the auth slice comes with feature 11
+api/              baseApi (one createApi), errors.ts (getErrorMessage, getRequestId)
+config/           env.ts: the only module that reads import.meta.env, validated with zod
+lib/              logger (reportError: the single error-reporting hook), cx
+styles/           tokens.css (@theme design tokens), index.css
+test/             Vitest setup and render helpers
+```
+
+- A page composes feature components. Code used by more than one feature goes into the shared folders, which never import from `features/` or `pages/`.
+- `api/baseApi.ts`: features inject their endpoints; response schemas are checked outside production, and a mismatch becomes a normal error.
+- `components/ui`: `Button`, `Input`, `Field`, `Card`, `Badge`, `Skeleton`, `EmptyState`, `ErrorState`, `QueryState`, `Toast`, `ErrorBoundary`. Variant maps, design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first.
+
+**Routes** — pages are added by later features:
+
+| Route                   | Layout                         | Who (from feature 11) |
+| ----------------------- | ------------------------------ | --------------------- |
+| `/:tenantSlug/...`      | `PortalLayout`                 | everyone              |
+| `/:tenantSlug/host/...` | `HostLayout` inside the portal | host of that tenant   |
+| `/admin/...`            | `AdminLayout`                  | superadmin            |
+| `*`                     | —                              | NotFound              |
+
+`admin` is a reserved tenant slug, and React Router ranks the static segment first, so `/admin` never reaches a portal.
+
+**Errors:**
+
+- A root boundary shows a full-page fallback. Each layout's pages sit in a pathless content route whose boundary replaces only the page ([D-054](decisions.md#d-054-a-layouts-error-boundary-sits-on-a-pathless-content-route)). The `ErrorBoundary` class protects single widgets.
+- Request errors are shown by `QueryState` (loading → `Skeleton`, error → `ErrorState` with the request id and Retry, empty → `EmptyState`).
+- `rtkErrorMiddleware` adds a toast for 403, 5xx and network errors.
+- Every error is reported once through `reportError` ([D-055](decisions.md#d-055-every-client-error-is-reported-once)).
+
+**Dev server:** `vite.config.ts` reads `WEB_PORT` and `API_PROXY_TARGET` (validated only when the dev server runs) and forwards `/api` to the API, so the browser calls the API on its own origin.
 
 ## Configuration
 
 Every environment-specific value comes from `.env`, validated at startup in one module per app ([D-022](decisions.md#d-022-configuration-comes-only-from-validated-env)). `.env.example` files are added by the features that introduce the variables ([D-027](decisions.md#d-027-envexample-files-are-created-with-the-feature-that-needs-them)).
 
 - **API:** `ConfigModule` validates the env with the zod schema in `apps/api/src/core/config/env.schema.ts` and serves the parsed values through `ConfigService`. It loads `apps/api/.env`, or `apps/api/.env.test` when `NODE_ENV=test` (both Vitest configs set it); real environment variables win over the file. In test mode `DATABASE_URL` must name a database ending in `_test`. The Prisma CLI reads the same `apps/api/.env` through `prisma.config.ts` ([D-037](decisions.md#d-037-generating-the-prisma-client-needs-no-database)); at startup the API waits for the database ([D-038](decisions.md#d-038-the-api-waits-for-the-database-at-startup)). An invalid or missing variable stops the start: the error names every failing variable, is logged as `fatal`, and the process exits with code 1.
+- **Web:** `config/env.ts` validates `VITE_API_BASE_URL` (a path such as `/api/v1` behind the proxy, or a full URL) when the app loads. `vite.config.ts` validates the dev-server variables `WEB_PORT` and `API_PROXY_TARGET`; they have no `VITE_` prefix, so they never reach the bundle, and a production build does not need them.
 - **Docker Compose:** the root `.env` (from the root `.env.example`) holds the Postgres credentials, the test database name and the host port.
