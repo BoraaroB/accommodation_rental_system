@@ -1,7 +1,7 @@
 # Feature 9 — Web bootstrap
 
 - **Branch:** `feat/web-bootstrap`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #17, 2026-09-26
 
 ## Goal and scope
 
@@ -81,3 +81,17 @@ Recorded as [D-054](../decisions.md#d-054-a-layouts-error-boundary-sits-on-a-pat
 - Send response schema mismatches to `reportError` through RTK Query's `onSchemaFailure` (comment in `api/baseApi.ts`).
 
 ## Commit message
+
+One commit on `feat/web-bootstrap`, merged into `main` by merge commit `1ee9762` (PR #17).
+
+`bccf99a`:
+
+```
+feat(web): bootstrap the web app with store, router and UI kit
+
+- Add apps/web (Vite 8, React 19, Tailwind 4) with design tokens and a zod-validated env
+- Add the Redux store: RTK Query baseApi, toast slice and a global error middleware
+- Add routes with portal, host and admin layouts, three levels of error boundaries and NotFound
+- Add the base UI kit (Button, Field, QueryState, ErrorState, Toast, ErrorBoundary, ...)
+- Organise the app by feature with conventional folders and add Vitest + Testing Library tests
+```

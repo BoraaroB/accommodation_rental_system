@@ -1,10 +1,10 @@
 # Progress
 
 - **Last updated:** 2026-09-26
-- **Current feature:** 9 — Web bootstrap (`feat/web-bootstrap`)
-- **Current step:** done – awaiting commit (checks green, review fixes applied, folders reorganised per D-058)
-- **Next step:** the repository owner commits, opens and merges the PR; then record the commit message and PR number in the feature log and set the status to `PR merged`
-- **Blocked / waiting on:** the repository owner: commit, PR and merge of `feat/web-bootstrap`
+- **Current feature:** none — feature 9 is merged; feature 10 has not started
+- **Current step:** —
+- **Next step:** Feature 10 — Web portal (`feat/web-portal`): restate the scope, verify the docs, show the design, then set it to `in progress` with its checklist and open `docs/features/10-web-portal.md`
+- **Blocked / waiting on:** the repository owner's go-ahead for feature 10 and the branch `feat/web-portal` created from an up-to-date `main`
 
 ## Rules
 
@@ -20,36 +20,24 @@
 
 Statuses: `not started` · `in progress` · `done – awaiting commit` · `committed` · `PR merged`
 
-| #   | Feature                  | Branch               | Status                 | PR  | Done       |
-| --- | ------------------------ | -------------------- | ---------------------- | --- | ---------- |
-| 1   | Repo setup               | `chore/repo-setup`   | PR merged              | #1  | 2026-09-24 |
-| 2   | API bootstrap            | `feat/api-bootstrap` | PR merged              | #3  | 2026-09-24 |
-| 3   | Database schema          | `feat/db-schema`     | PR merged              | #5  | 2026-09-24 |
-| 4   | Database seed            | `feat/db-seed`       | PR merged              | #7  | 2026-09-24 |
-| 5   | API auth                 | `feat/api-auth`      | PR merged              | #9  | 2026-09-25 |
-| 6   | API portal (public)      | `feat/api-portal`    | PR merged              | #11 | 2026-09-25 |
-| 7   | API host panel           | `feat/api-host`      | PR merged              | #13 | 2026-09-25 |
-| 8   | API admin panel          | `feat/api-admin`     | PR merged              | #15 | 2026-09-25 |
-| 9   | Web bootstrap            | `feat/web-bootstrap` | done – awaiting commit |     |            |
-| 10  | Web portal               | `feat/web-portal`    | not started            |     |            |
-| 11  | Web auth                 | `feat/web-auth`      | not started            |     |            |
-| 12  | Web host panel           | `feat/web-host`      | not started            |     |            |
-| 13  | Web admin panel          | `feat/web-admin`     | not started            |     |            |
-| 14  | Docker                   | `chore/docker`       | not started            |     |            |
-| 15  | Final documentation pass | `docs/final-pass`    | not started            |     |            |
+| #   | Feature                  | Branch               | Status      | PR  | Done       |
+| --- | ------------------------ | -------------------- | ----------- | --- | ---------- |
+| 1   | Repo setup               | `chore/repo-setup`   | PR merged   | #1  | 2026-09-24 |
+| 2   | API bootstrap            | `feat/api-bootstrap` | PR merged   | #3  | 2026-09-24 |
+| 3   | Database schema          | `feat/db-schema`     | PR merged   | #5  | 2026-09-24 |
+| 4   | Database seed            | `feat/db-seed`       | PR merged   | #7  | 2026-09-24 |
+| 5   | API auth                 | `feat/api-auth`      | PR merged   | #9  | 2026-09-25 |
+| 6   | API portal (public)      | `feat/api-portal`    | PR merged   | #11 | 2026-09-25 |
+| 7   | API host panel           | `feat/api-host`      | PR merged   | #13 | 2026-09-25 |
+| 8   | API admin panel          | `feat/api-admin`     | PR merged   | #15 | 2026-09-25 |
+| 9   | Web bootstrap            | `feat/web-bootstrap` | PR merged   | #17 | 2026-09-26 |
+| 10  | Web portal               | `feat/web-portal`    | not started |     |            |
+| 11  | Web auth                 | `feat/web-auth`      | not started |     |            |
+| 12  | Web host panel           | `feat/web-host`      | not started |     |            |
+| 13  | Web admin panel          | `feat/web-admin`     | not started |     |            |
+| 14  | Docker                   | `chore/docker`       | not started |     |            |
+| 15  | Final documentation pass | `docs/final-pass`    | not started |     |            |
 
 ## Current feature checklist
 
-Feature 9 — Web bootstrap ([log](features/09-web-bootstrap.md)):
-
-- [x] Scope, docs check (Vite template, Vitest web config) and design — approved
-- [x] Scaffold `apps/web` (Vite `react-ts`), workspace scripts, dependencies
-- [x] Tailwind 4 + design tokens; env module, `vite.config.ts` dev proxy, `.env.example`
-- [x] Vitest + Testing Library (jsdom) setup
-- [x] `reportError`, `getErrorMessage`, `baseApi`, `uiSlice` + `rtkErrorMiddleware`, store
-- [x] UI kit: Button, Input, Field, Card, Badge, Skeleton, EmptyState, ErrorState, QueryState, Toast, ErrorBoundary
-- [x] Router, layouts (`PortalLayout`, `HostLayout`, `AdminLayout`), root and layout error boundaries, NotFound
-- [x] Tests
-- [x] `/check` and the `reviewer` agent; review fixes applied
-- [x] Folder structure reorganised (D-058, asked for by the repository owner)
-- [x] Feature log, `decisions.md`, `architecture.md`, README
+No feature in progress. The checklist of the next feature is added when it starts; the history of finished features is in [features/](features/).
