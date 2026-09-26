@@ -1,0 +1,12 @@
+@import 'tailwindcss';
+@import './tokens.css';
+
+@layer base {
+  body {
+    min-height: 100dvh;
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}

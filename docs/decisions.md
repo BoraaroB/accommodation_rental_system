@@ -160,7 +160,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-022: Configuration comes only from validated env
 
-- **Status:** Implemented for the API (feature 2); the web app follows in feature 9 and Docker in feature 14
+- **Status:** Implemented for the API (feature 2) and the web app (feature 9); Docker follows in feature 14
 - **Decision:** No URLs, hosts, ports, origins or secrets in code. Each app reads its environment in one module, validates it with zod at startup and fails fast with a clear error. `.env.example` files are committed without secrets; `.env*` is ignored by git.
 - **Consequences:** The same build runs locally and in Docker with different `.env` files.
 
@@ -180,7 +180,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-025: Booking-style layout, not branding
 
-- **Status:** Accepted — implemented in features 9–10
+- **Status:** Design tokens implemented (feature 9, [D-056](#d-056-colours-come-only-from-design-tokens)); the Booking-style pages follow in feature 10
 - **Context:** "Feel free to take UI inspiration from Airbnb or Booking."
 - **Decision:** Booking.com's layout and UX patterns (search bar, filter sidebar/drawer, horizontal result cards, rating badge) — not its name, logo or colours. Colours come from design tokens and the tenant's primary colour; mobile-first.
 - **Consequences:** A familiar, usable layout; tenant branding is a runtime CSS variable.
@@ -197,7 +197,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-027: .env.example files are created with the feature that needs them
 
-- **Status:** Accepted — implemented in features 2, 9 and 14
+- **Status:** Implemented for the API (feature 2) and the web app (feature 9); the root file grows in feature 14
 - **Context:** Feature 1 creates no application that reads environment variables.
 - **Decision:** Feature 1 only adds the ignore rules (`.env*` ignored, `.env.example` allowed). `apps/api/.env.example` is created in feature 2, `apps/web/.env.example` in feature 9, and the root (Docker) `.env.example` in features 2 and 14.
 - **Consequences:** Every variable appears together with the schema that validates it; no dead configuration.
@@ -217,7 +217,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-030: RTK Query and Redux Toolkit, no Zustand
 
-- **Status:** Accepted — implemented in feature 9
+- **Status:** Implemented (feature 9) — the store with `baseApi` and the UI slice; the auth slice follows in feature 11
 - **Decision:** Server state in RTK Query (one `createApi`, `injectEndpoints` per feature, tag invalidation); client state in two Redux Toolkit slices (auth token, UI). No second state library.
 - **Consequences:** One mental model for all state; filters stay in the URL ([D-017](#d-017-listing-filters-live-in-the-url)).
 
@@ -434,3 +434,43 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - `HostsModule` owns the memberships; it reads accounts through the users repository and hashes with the hasher `AuthModule` exports. The nested write makes `PrismaHostsRepository` a second writer of users, next to `PrismaUsersRepository.create`.
   - Logs name the user and tenant ids, never the e-mail or the password.
 - **Consequences:** One person can host several tenants and stay a client elsewhere with one account. The superadmin knows a new host's first password; an invitation or a forced password change is a possible improvement.
+
+## D-054: A layout's error boundary sits on a pathless content route
+
+- **Status:** Implemented (feature 9)
+- **Context:** The plan wants an error inside a portal, host or admin page to take down only the content, with the header and navigation still usable. In React Router a route's `ErrorBoundary` renders in place of that route's own element, so a boundary on the layout route would replace the layout as well.
+- **Decision:** Each layout route has one pathless child route, created by `contentBoundary(children)` in `app/router.ts`, whose `ErrorBoundary` is `RouteErrorState`; the layout's pages go inside it. The root route has `RootErrorBoundary`, a full-page fallback that uses a reload and a plain link, so it works even when the app's state is broken. Widgets use the `ErrorBoundary` class.
+- **Consequences:** Three levels of boundaries, as planned; a page added later is protected by placing it in `contentBoundary([...])`. The host panel nests inside the portal's boundary and has its own, so a failing host page keeps both headers.
+
+## D-055: Every client error is reported once
+
+- **Status:** Implemented (feature 9)
+- **Context:** React 19 calls the root's `onCaughtError` for every error a boundary catches, and the plan also has the widget `ErrorBoundary` report in `componentDidCatch`. Both would report the same error twice.
+- **Decision:** `reportError()` in `lib/logger.ts` is the single reporting function. The root hooks `onUncaughtError`, `onRecoverableError` and `onCaughtError` call it; `onCaughtError` skips errors whose boundary is the widget `ErrorBoundary`, which has reported them already. Route errors are reported through `onCaughtError`.
+- **Consequences:** A monitoring service added to `reportError()` sees each error once. React Router still writes its own console line for a route render error; that is console output only, not a report.
+
+## D-056: Colours come only from design tokens
+
+- **Status:** Implemented (feature 9)
+- **Context:** "UI uses design tokens only (no raw hex colours)"; a tenant's primary colour must override the brand colour at runtime.
+- **Decision:** `styles/tokens.css` defines the tokens in Tailwind's `@theme` (primary, on-primary, surface, surface-raised, text, muted, border, danger, success, two radii, the font) and removes Tailwind's default palette with `--color-*: initial`, so a raw colour utility such as `bg-blue-500` does not exist. Shades come from opacity modifiers (`bg-primary/90`), which Tailwind computes from the CSS variable. `@theme inline` is not used, so overriding `--color-primary` on a layout root recolours everything under it.
+- **Consequences:** Components cannot drift from the palette; tenant branding (feature 10) is one CSS variable.
+
+## D-057: Web tests run in jsdom with Testing Library
+
+- **Status:** Implemented (feature 9)
+- **Context:** Vitest `^4.1` is the test runner in every workspace (D-026); the web app needs a DOM.
+- **Decision:** `apps/web/vitest.config.ts` uses the React plugin, `environment: 'jsdom'` and a setup file that loads `@testing-library/jest-dom/vitest` and calls Testing Library's `cleanup` after each test (Vitest globals are off, so it cannot register itself). `test.env` sets `VITE_API_BASE_URL`, because Vitest serves `import.meta.env` from it, so tests need no `.env` file. The Vitest config does not reuse `vite.config.ts`, whose dev-server env is required only by the dev server. Tests render with a fresh store (`renderWithStore`) and routes with `createMemoryRouter`; failing requests are simulated through a thunk rejected with value, not a mocked `fetch`.
+- **Consequences:** Component, router and store tests run in about a second without a browser or a server.
+
+## D-058: The web app is organised by feature, with conventional folder names
+
+- **Status:** Implemented (feature 9) — asked for by the repository owner
+- **Context:** The plan grouped shared web code under `shared/` (`shared/ui`, `shared/api`, `shared/config`, `shared/lib`) and put the store and routing files side by side in `app/`. The repository owner found this hard to navigate and asked for the common industry layout for large projects with many developers.
+- **Decision:** The layout follows Bulletproof React, the most widely cited feature-based React structure, with a separate `pages/` folder:
+  - `app/` — the router (`router.ts`) and the layouts;
+  - `pages/` — route components (e.g. `NotFoundPage`, `pages/errors/` for the route error boundaries; feature pages from feature 10);
+  - `features/<name>/` — one folder per domain (`listings`, `auth`, `host`, `admin`) with `api.ts` (injected endpoints), `components/` and `hooks/`;
+  - shared code in conventional folders: `components/` (`components/ui` is the UI kit), `hooks/` (hooks shared by several features; created with the first one), `store/` (store, slices, middleware and the typed `useAppDispatch` / `useAppSelector`, next to the store as in the Redux Toolkit docs), `api/` (`baseApi`, `errors`), `config/` (`env`), `lib/` (`logger`, `cx`), plus `styles/` and `test/`.
+  - Dependencies point one way: `app` → `pages` → `features` → shared folders; shared folders never import from `features/` or `pages/`.
+- **Consequences:** Familiar names; one feature still lives in one folder. The plan's paths map as `shared/ui` → `components/ui`, `shared/api` → `api`, `shared/config` → `config`, `shared/lib` → `lib`, `app/store.ts` → `store/store.ts`.

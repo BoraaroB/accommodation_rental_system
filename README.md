@@ -75,6 +75,15 @@ npm run test:e2e -w apps/api
 
 The e2e setup applies the migrations to that database and refuses to run against a database whose name does not end in `_test`. `LOG_LEVEL=fatal` in `.env.test` keeps the test output quiet.
 
+### Web app
+
+```bash
+cp apps/web/.env.example apps/web/.env
+npm run dev -w apps/web           # http://localhost:5173, with the API running
+```
+
+The dev server forwards `/api` to `API_PROXY_TARGET` (the API started above), so the browser calls the API on the web app's own origin. Every variable in `apps/web/.env.example` is required: the app checks `VITE_API_BASE_URL` when it loads, and the dev server checks `WEB_PORT` and `API_PROXY_TARGET` when it starts.
+
 ## Commands
 
 Run from the repository root. `test`, `lint`, `typecheck` and `build` run in every workspace that defines the script, `packages/shared` first; `test` and `typecheck` rebuild `packages/shared` before they start. Formatting covers the whole repository.
@@ -88,6 +97,7 @@ Run from the repository root. `test`, `lint`, `typecheck` and `build` run in eve
 | `npm run format` / `npm run format:check` | Format with Prettier / check formatting |
 | `npm test -w packages/shared`             | Run a script in a single workspace      |
 | `npm run start:dev -w apps/api`           | Start the API in watch mode             |
+| `npm run dev -w apps/web`                 | Start the web app's dev server          |
 | `npm run test:e2e -w apps/api`            | API end-to-end tests                    |
 | `npm run db:migrate`                      | Apply and create Prisma migrations      |
 | `npm run db:seed`                         | Load the CSV data and demo accounts     |
@@ -96,7 +106,7 @@ Run from the repository root. `test`, `lint`, `typecheck` and `build` run in eve
 
 ```
 apps/api          NestJS API
-apps/web          React web app (added in feature 9)
+apps/web          React web app
 packages/shared   @ars/shared — data contracts and shared utilities
 data/             listings.csv and bookings.csv, loaded into the database by the seed
 docker/           Docker support files (database init scripts)
