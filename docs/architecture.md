@@ -158,37 +158,42 @@ The host panel (feature 7) reuses them: blocking checks the range with the same 
 main.tsx          root: error hooks, Redux provider, router (RouterProvider from react-router/dom)
 app/              router.ts (all routes), layouts/ (Root, Site, Portal, Host, Admin)
 pages/            route components: LandingPage, LoginPage, RegisterPage, PortalHomePage,
-                  ListingDetailPage, NotFoundPage, errors/
+                  ListingDetailPage, HostListingsPage, HostListingPage, HostBookingsPage,
+                  NotFoundPage, errors/
 features/<name>/  api.ts (injected endpoints), components/, hooks/ — tenants (portals, branding),
                   listings (URL filters, search, cards, availability), auth (sign-in, role checks,
-                  account menu); host, admin follow
+                  account menu), host (listing table, editor, blocking calendar, bookings); admin follows
 components/       shared components: ui/ (the UI kit: shadcn/ui on Base UI), AvailabilityCalendar,
-                  DateRangePicker, Pager
-hooks/            hooks shared by several features: useTenantSlug, useMediaQuery
+                  DateRangePicker, Pager, MoneyInput, FormAlert, EmptyPageState
+hooks/            hooks shared by several features: useTenantSlug, useMediaQuery, useCalendarMonths
 store/            makeStore (baseApi + auth and ui slices + auth listener + rtkErrorMiddleware), typed hooks
-api/              baseApi (one createApi), errors.ts (getErrorMessage, getRequestId)
+api/              baseApi (one createApi, cache tags), errors.ts (getErrorMessage, getRequestId),
+                  availabilityApi (used by the portal and the host panel), listingArgs
 config/           env.ts: the only module that reads import.meta.env, validated with zod
 lib/              logger (reportError: the single error-reporting hook), utils (cn), format (money, dates, Intl in UTC),
-                  tokenStorage (the access token in localStorage)
+                  euros (typed euros → cents), propertyTypes, backTo, tokenStorage (the access token in localStorage)
 styles/           tokens.css (the shadcn theme: CSS variables + @theme inline), index.css
 test/             Vitest setup, the fetch stub (apiStub), fixtures and render helpers
 ```
 
 - A page composes feature components. Code used by more than one feature goes into the shared folders, which never import from `features/` or `pages/`.
 - `api/baseApi.ts`: features inject their endpoints; response schemas are checked outside production, and a mismatch becomes a normal error.
-- `components/ui` is **shadcn/ui on Base UI** ([D-062](decisions.md#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the CLI (`npx shadcn add <name>`, configured by `components.json`) copies each component's source here, and it is ours to adapt. Generated: `button` (plus an `onPrimary` variant for the portal header), `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, `dropdown-menu` (plus `DropdownMenuLinkItem` on Base UI's `Menu.LinkItem`), plus `separator` and `textarea` (used by `field` and `input-group`). Our own: `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state`, `error-boundary`. Design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first; icons from lucide-react; links styled as buttons are router `Link`s with `buttonVariants`.
+- `components/ui` is **shadcn/ui on Base UI** ([D-062](decisions.md#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the CLI (`npx shadcn add <name>`, configured by `components.json`) copies each component's source here, and it is ours to adapt. Generated: `button` (plus an `onPrimary` variant for the portal header), `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, `dropdown-menu` (plus `DropdownMenuLinkItem` on Base UI's `Menu.LinkItem`), `table`, plus `separator` and `textarea` (used by `field` and `input-group`). Our own: `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state`, `error-boundary`. Design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first; icons from lucide-react; links styled as buttons are router `Link`s with `buttonVariants`.
 
 **Routes:**
 
-| Route                       | Page / layout                                  | Who                              |
-| --------------------------- | ---------------------------------------------- | -------------------------------- |
-| `/`                         | `LandingPage` in `SiteLayout`: every portal    | everyone                         |
-| `/login`, `/register`       | `LoginPage`, `RegisterPage` in `SiteLayout`    | signed out (others are sent on)  |
-| `/:tenantSlug`              | `PortalHomePage` in `PortalLayout`             | everyone                         |
-| `/:tenantSlug/listings/:id` | `ListingDetailPage`                            | everyone                         |
-| `/:tenantSlug/host/...`     | `RequireHost` → `HostLayout` inside the portal | hosts of that tenant, superadmin |
-| `/admin/...`                | `RequireSuperadmin` → `AdminLayout`            | superadmin                       |
-| `*`                         | —                                              | NotFound                         |
+| Route                            | Page / layout                                                          | Who                              |
+| -------------------------------- | ---------------------------------------------------------------------- | -------------------------------- |
+| `/`                              | `LandingPage` in `SiteLayout`: every portal                            | everyone                         |
+| `/login`, `/register`            | `LoginPage`, `RegisterPage` in `SiteLayout`                            | signed out (others are sent on)  |
+| `/:tenantSlug`                   | `PortalHomePage` in `PortalLayout`                                     | everyone                         |
+| `/:tenantSlug/listings/:id`      | `ListingDetailPage`                                                    | everyone                         |
+| `/:tenantSlug/host`              | `RequireHost` → `HostLayout` inside the portal; sends on to `listings` | hosts of that tenant, superadmin |
+| `/:tenantSlug/host/listings`     | `HostListingsPage`                                                     | hosts of that tenant, superadmin |
+| `/:tenantSlug/host/listings/:id` | `HostListingPage`: editor and calendar                                 | hosts of that tenant, superadmin |
+| `/:tenantSlug/host/bookings`     | `HostBookingsPage`                                                     | hosts of that tenant, superadmin |
+| `/admin/...`                     | `RequireSuperadmin` → `AdminLayout`                                    | superadmin                       |
+| `*`                              | —                                                                      | NotFound                         |
 
 `admin`, `login` and `register` are reserved tenant slugs, and React Router ranks static segments first, so they never reach a portal.
 
@@ -216,7 +221,15 @@ test/             Vitest setup, the fetch stub (apiStub), fixtures and render he
 - Result cards link to the detail with the searched dates. The detail shows the facts, the price (and the stay's total with dates), "Available for your dates ✓/✗" and the availability calendar on the kit's Calendar ([D-060](decisions.md#d-060-the-availability-calendar-shows-a-year-ahead-one-request-per-view)).
 - `ScrollRestoration` starts every new page at the top.
 
-**Tests:** page tests go through the real router and store with a stubbed `fetch` behind the test API URL `http://api.test/api/v1` ([D-059](decisions.md#d-059-web-tests-stub-fetch-behind-an-absolute-test-api-url)).
+**Host panel (feature 12):**
+
+- `HostLayout` has two tabs, Listings and Bookings (a bottom bar on phones); `/:tenantSlug/host` sends on to the listings, where sign-in lands.
+- Filters and pages live in the URL ([D-068](decisions.md#d-068-the-host-tables-keep-their-filters-in-the-url-and-apply-them-at-once)): `useUrlFilters` reads them with `parseHostListingFilters` / `parseHostBookingFilters` (the API's schemas) and writes changes back, always to page 1. The controls follow the URL without being remounted.
+- Listings: a search (title or city) and a table; a click on a row opens the editor, whose back link returns to the same search.
+- Editor: react-hook-form with `listingUpdateSchema`; the price is typed in euros (`MoneyInput`) and sent in cents; 409 `MAX_GUESTS_BELOW_BOOKING` shows on the guests field. Below it, `BlockingCalendar` ([D-066](decisions.md#d-066-the-host-calendar-tells-booked-days-from-blocked-ones-and-blocks-a-selected-range)): booked days (public availability minus blocked days) cannot be selected; a selected day or range is blocked or unblocked.
+- Bookings: filters by listing (`ListingPicker`, a combobox that searches on the server), status and dates; the table shows the stored status and the time badge (past, in progress, upcoming; [D-013](decisions.md#d-013-stale-booking-statuses-are-kept-as-is)) and the stay's total.
+- Cache tags ([D-067](decisions.md#d-067-the-hosts-changes-make-cached-responses-stale-through-tags)): an edit or a blocked day refreshes the portal's cached listing, lists and availability.
+  **Tests:** page tests go through the real router and store with a stubbed `fetch` behind the test API URL `http://api.test/api/v1` ([D-059](decisions.md#d-059-web-tests-stub-fetch-behind-an-absolute-test-api-url)).
 
 **Dev server:** `vite.config.ts` reads `WEB_PORT` and `API_PROXY_TARGET` (validated only when the dev server runs) and forwards `/api` to the API, so the browser calls the API on its own origin.
 

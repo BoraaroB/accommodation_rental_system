@@ -20,6 +20,7 @@ import { PriceSummary } from '../features/listings/components/PriceSummary';
 import { PropertyPlaceholder } from '../features/listings/components/PropertyPlaceholder';
 import { RatingBadge } from '../features/listings/components/RatingBadge';
 import { useTenantSlug } from '../hooks/useTenantSlug';
+import { backToOf } from '../lib/backTo';
 import { formatCountry } from '../lib/format';
 
 /** The searched stay from `?from&to`; ignored unless it is a range from today on. */
@@ -29,21 +30,6 @@ function stayOf(params: URLSearchParams): DateRange | undefined {
     to: params.get('to'),
   });
   return result.success ? result.data : undefined;
-}
-
-/** The results the visitor came from: this portal's list, when a result card linked here. */
-function backToOf(state: unknown, tenantSlug: string): string {
-  const portal = `/${tenantSlug}`;
-  if (typeof state === 'object' && state !== null && 'backTo' in state) {
-    const { backTo } = state;
-    if (
-      typeof backTo === 'string' &&
-      (backTo === portal || backTo.startsWith(`${portal}?`))
-    ) {
-      return backTo;
-    }
-  }
-  return portal;
 }
 
 /**
@@ -61,7 +47,8 @@ export function ListingDetailPage() {
     isListingId ? { tenantSlug, id } : skipToken,
   );
   const stay = stayOf(searchParams);
-  const backTo = backToOf(location.state, tenantSlug);
+  // The results the visitor came from, when a result card linked here.
+  const backTo = backToOf(location.state, `/${tenantSlug}`);
 
   const backLink = (
     <Link

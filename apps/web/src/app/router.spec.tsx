@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../test/apiStub';
-import { aTenant, aUser } from '../test/fixtures';
+import { aListing, aPage, aTenant, aUser } from '../test/fixtures';
 import { renderRoute } from '../test/renderRoute';
 import { RootErrorBoundary } from '../pages/errors/RootErrorBoundary';
 import { PortalLayout } from './layouts/PortalLayout';
@@ -27,14 +27,19 @@ describe('router', () => {
     ).toBeInTheDocument();
   });
 
-  it('renders the host panel inside the portal', async () => {
+  it('opens the host panel inside the portal on its listings', async () => {
     stubApi({
       'GET /tenants/adriatic': aTenant(),
       'GET /auth/me': aUser({
         hostOf: [{ slug: 'adriatic', name: 'Adriatic Stays' }],
       }),
+      'GET /tenants/adriatic/host/listings': aPage([aListing()]),
     });
-    renderRoute('/adriatic/host', { signedIn: true });
+    const { router } = renderRoute('/adriatic/host', { signedIn: true });
+    expect(
+      await screen.findByRole('heading', { name: 'Listings' }),
+    ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/adriatic/host/listings');
     expect(
       await screen.findByRole('link', { name: 'Adriatic Stays' }),
     ).toBeInTheDocument();

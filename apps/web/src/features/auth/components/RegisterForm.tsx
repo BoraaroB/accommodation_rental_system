@@ -3,13 +3,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm, type FieldError } from 'react-hook-form';
 import { Link } from 'react-router';
 import { getApiError } from '../../../api/errors';
+import { FormAlert } from '../../../components/FormAlert';
 import { Button } from '../../../components/ui/button';
 import { FormField } from '../../../components/ui/form-field';
 import { Input } from '../../../components/ui/input';
 import { useLoginMutation, useRegisterMutation } from '../api';
 import { useRedirectParam } from '../hooks/useRedirectParam';
 import { signInPath } from '../redirects';
-import { FormAlert } from './FormAlert';
 
 function isEmailTaken(error: unknown): boolean {
   return getApiError(error)?.code === 'EMAIL_TAKEN';

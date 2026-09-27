@@ -1,10 +1,10 @@
 import type { DateRange } from '@ars/shared';
 import { CircleCheckIcon, CircleXIcon } from 'lucide-react';
+import { useGetAvailabilityQuery } from '../../../api/availabilityApi';
 import { QueryState } from '../../../components/ui/query-state';
 import { Skeleton } from '../../../components/ui/skeleton';
 import { formatDateRange } from '../../../lib/format';
 import { cn } from '../../../lib/utils';
-import { useGetAvailabilityQuery } from '../api';
 
 /** "Available for your dates": free when no day of the stay is taken. */
 export function AvailabilityVerdict({

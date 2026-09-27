@@ -137,6 +137,10 @@ function Calendar({
         hidden: cn('invisible', defaultClassNames.hidden),
         ...classNames,
       }}
+      // Possible improvement (not in the plan): define these components outside
+      // `Calendar`. Inline, they are new types on every render, so React
+      // replaces the whole grid each time and a click that lands while the
+      // calendar renders again (e.g. its data arriving) is lost.
       components={{
         Root: ({ className, rootRef, ...props }) => {
           return (

@@ -1,4 +1,4 @@
-import { parseIsoDate, toIsoDate, type IsoDate } from '@ars/shared';
+import { parseIsoDate, today, toIsoDate, type IsoDate } from '@ars/shared';
 import { CalendarIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { DESKTOP_QUERY, useMediaQuery } from '../hooks/useMediaQuery';
@@ -22,8 +22,8 @@ export interface PickedRange {
 export interface DateRangePickerProps {
   value: PickedRange;
   onChange: (range: PickedRange) => void;
-  /** The earliest day that can be picked. */
-  minDate: IsoDate;
+  /** The earliest day that can be picked; any day when left out. */
+  minDate?: IsoDate;
   placeholder?: string;
   id?: string;
   'aria-invalid'?: boolean;
@@ -96,7 +96,7 @@ export function DateRangePicker({
           timeZone="UTC"
           weekStartsOn={1}
           numberOfMonths={isDesktop ? 2 : 1}
-          defaultMonth={parseIsoDate(from ?? minDate)}
+          defaultMonth={parseIsoDate(from ?? minDate ?? today())}
           selected={{
             from: from === undefined ? undefined : parseIsoDate(from),
             to: to === undefined ? undefined : parseIsoDate(to),
@@ -111,7 +111,11 @@ export function DateRangePicker({
               setOpen(false);
             }
           }}
-          disabled={{ before: parseIsoDate(minDate) }}
+          disabled={
+            minDate === undefined
+              ? undefined
+              : { before: parseIsoDate(minDate) }
+          }
           labels={{
             labelPrevious: () => 'Previous month',
             labelNext: () => 'Next month',
