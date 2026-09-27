@@ -2,13 +2,13 @@ import { loginSchema } from '@ars/shared';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router';
+import { FormAlert } from '../../../components/FormAlert';
 import { Button } from '../../../components/ui/button';
 import { FormField } from '../../../components/ui/form-field';
 import { Input } from '../../../components/ui/input';
 import { useLoginMutation } from '../api';
 import { useRedirectParam } from '../hooks/useRedirectParam';
 import { registerPath } from '../redirects';
-import { FormAlert } from './FormAlert';
 
 /**
  * Sign-in with e-mail and password. On success the token is kept and

@@ -86,6 +86,8 @@ Open `/` for the list of portals, then a portal such as `/adriatic`: search by c
 
 One sign-in page serves every portal and both panels: `/login` (and `/register`, which creates a client account). "Sign in" in a portal's header returns to that page afterwards; otherwise a superadmin goes to `/admin`, a host to their portal's host panel (`/adriatic/host`) and a client to `/`. The host panel is open to the tenant's hosts and the superadmin, the admin panel to the superadmin; a signed-out visitor is sent to sign in and back ([D-065](docs/decisions.md#d-065-one-global-sign-in-page)).
 
+In the host panel (sign in as `host1.adriatic@example.com`), Listings searches the tenant's listings by title or city and opens one in the editor: change its title, type, price, guests or bedrooms, and block or unblock days in its calendar (select a day, or a first and a last day). Bookings lists the tenant's bookings, filtered by listing, status and dates.
+
 The dev server forwards `/api` to `API_PROXY_TARGET` (the API started above), so the browser calls the API on the web app's own origin. Every variable in `apps/web/.env.example` is required: the app checks `VITE_API_BASE_URL` when it loads, and the dev server checks `WEB_PORT` and `API_PROXY_TARGET` when it starts.
 
 ## Commands

@@ -84,4 +84,98 @@ describe('AvailabilityCalendar', () => {
 
     expect(onMonthChange).not.toHaveBeenCalled();
   });
+
+  describe('selecting days (host)', () => {
+    const statuses: Record<string, DayStatus> = {
+      '2026-10-01': 'past',
+      '2026-10-07': 'booked',
+      '2026-10-08': 'booked',
+      '2026-10-12': 'blocked',
+    };
+    const getDayStatus = (day: string): DayStatus =>
+      statuses[day] ?? 'available';
+    const day = (name: string) => screen.getByRole('button', { name });
+
+    it('names booked and blocked days and explains them in the legend', () => {
+      renderCalendar({
+        getDayStatus,
+        legend: ['available', 'booked', 'blocked'],
+        onSelectRange: vi.fn(),
+      });
+
+      expect(day('Wednesday, 7 October 2026, booked')).toBeDisabled();
+      expect(day('Thursday, 1 October 2026, in the past')).toBeDisabled();
+      expect(day('Monday, 12 October 2026, blocked')).toBeEnabled();
+      const legend = screen.getByRole('list');
+      expect(
+        within(legend)
+          .getAllByRole('listitem')
+          .map((item) => item.textContent),
+      ).toEqual(['Available', '12Booked', '12Blocked']);
+    });
+
+    it('selects one day as the range [day, next day)', async () => {
+      const user = userEvent.setup();
+      const onSelectRange = vi.fn();
+      renderCalendar({ getDayStatus, onSelectRange });
+
+      await user.click(day('Friday, 2 October 2026, available'));
+
+      expect(onSelectRange).toHaveBeenCalledWith({
+        from: '2026-10-02',
+        to: '2026-10-03',
+      });
+    });
+
+    it('extends the selection to a range that ends after its last day', async () => {
+      const user = userEvent.setup();
+      const onSelectRange = vi.fn();
+      renderCalendar({
+        getDayStatus,
+        selected: { from: '2026-10-09', to: '2026-10-10' },
+        onSelectRange,
+      });
+
+      await user.click(day('Monday, 12 October 2026, blocked'));
+
+      expect(onSelectRange).toHaveBeenCalledWith({
+        from: '2026-10-09',
+        to: '2026-10-13',
+      });
+      expect(
+        day('Friday, 9 October 2026, available, selected'),
+      ).toBeInTheDocument();
+    });
+
+    it('starts again from the clicked day when a range would span a booking', async () => {
+      const user = userEvent.setup();
+      const onSelectRange = vi.fn();
+      renderCalendar({
+        getDayStatus,
+        selected: { from: '2026-10-05', to: '2026-10-06' },
+        onSelectRange,
+      });
+
+      await user.click(day('Friday, 9 October 2026, available'));
+
+      expect(onSelectRange).toHaveBeenCalledWith({
+        from: '2026-10-09',
+        to: '2026-10-10',
+      });
+    });
+
+    it('clears the selection when its only day is clicked again', async () => {
+      const user = userEvent.setup();
+      const onSelectRange = vi.fn();
+      renderCalendar({
+        getDayStatus,
+        selected: { from: '2026-10-05', to: '2026-10-06' },
+        onSelectRange,
+      });
+
+      await user.click(day('Monday, 5 October 2026, available, selected'));
+
+      expect(onSelectRange).toHaveBeenCalledWith(undefined);
+    });
+  });
 });

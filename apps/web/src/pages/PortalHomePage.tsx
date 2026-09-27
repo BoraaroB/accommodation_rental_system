@@ -1,9 +1,10 @@
 import type { DateRange, ListingDto, ListingQuery, Page } from '@ars/shared';
 import { SearchXIcon, SlidersHorizontalIcon } from 'lucide-react';
 import { useEffect } from 'react';
-import { Link, useLocation } from 'react-router';
+import { useLocation } from 'react-router';
+import { EmptyPageState } from '../components/EmptyPageState';
 import { Pager } from '../components/Pager';
-import { Button, buttonVariants } from '../components/ui/button';
+import { Button } from '../components/ui/button';
 import { EmptyState } from '../components/ui/empty-state';
 import { QueryState } from '../components/ui/query-state';
 import {
@@ -68,17 +69,10 @@ export function PortalHomePage() {
   const emptyState = (page: Page<ListingDto> | undefined) => {
     if (page !== undefined && page.total > 0) {
       return (
-        <EmptyState
-          title="This page is empty"
-          description={`There are ${pluralize(page.total, 'stay')}, on fewer pages.`}
-          action={
-            <Link
-              to={pageHref(1)}
-              className={buttonVariants({ variant: 'outline' })}
-            >
-              Go to the first page
-            </Link>
-          }
+        <EmptyPageState
+          total={page.total}
+          noun="stay"
+          firstPageHref={pageHref(1)}
         />
       );
     }
@@ -101,6 +95,9 @@ export function PortalHomePage() {
         The forms start from the URL and are remounted when it changes: a
         filter removed from the URL (a chip, "Clear all", back) must also
         leave the form, which a form that keeps its state would not do.
+        Possible improvement (not in the plan): follow the URL without
+        remounting, as the host panel's filters do, so the focus stays on
+        the control that applied a filter.
       */}
       <SearchBar key={search} />
       <div className="flex flex-col gap-6 md:grid md:grid-cols-[16rem_1fr] md:items-start">

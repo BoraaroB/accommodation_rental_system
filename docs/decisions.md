@@ -100,7 +100,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-013: Stale booking statuses are kept as-is
 
-- **Status:** Implemented in the API (feature 7: statuses are returned as stored); the time badge follows in feature 12
+- **Status:** Implemented (feature 7: the API returns statuses as stored; feature 12: the time badge in the host's booking table, not shown for a cancelled booking)
 - **Context:** With today at 2026-09-24, 532 bookings are `confirmed` although their checkout has passed.
 - **Decision:** Statuses are not rewritten. Availability treats `confirmed` and `completed` alike (both occupy days). The host table shows the stored status plus a time badge derived from the dates and `today()`: past, in progress or upcoming.
 - **Consequences:** The data stays exactly as delivered; the UI still tells the host what is happening now.
@@ -492,6 +492,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** Challenge item 4: "On a single listing — when that listing is available to book." The plan asks for "a calendar for the next few months", two months side by side on desktop and one on phones, with taken days struck through. The public availability endpoint answers for any range from today on (D-046).
 - **Decision:** `AvailabilityCalendar` (in the shared `components/`, because the host panel reuses it for blocking in feature 12) is presentational: it gets the first month, the navigation limits and `getDayStatus(day)`. It is the UI kit's Calendar (react-day-picker) without a selection mode: `modifiers` mark unavailable, past and loading days and the searched stay, `labelGridcell` gives each day its date and status for screen readers, and `timeZone="UTC"` keeps the grid on the same calendar days as the `IsoDate`s (D-012; checked with tests run in other time zones). The listing page moves it month by month from the current month to 11 months ahead and fetches two months, from today on, in one request — the two shown on desktop; on phones, which show one, the next month is already loaded. Days are past, available, unavailable or loading; the searched stay is highlighted. "Available for your dates" comes from a separate request for exactly `[from, to)`.
 - **Consequences:** Short requests and cached months when the visitor goes back; a stay searched further ahead than a year opens at the last month the calendar allows.
+- **Implementation (feature 12):** the months (current month to 11 ahead, the two shown from today on) are the shared `useCalendarMonths` hook, used by the portal's and the host's calendar.
 
 ## D-061: The filter drawer is the UI kit's Sheet
 
@@ -539,3 +540,34 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - The token is the only auth state in Redux, kept in `localStorage`. A sign-out drops every cached response. A 401 while signed in (an expired token, a deleted user) signs the user out with a toast, and protected pages send them to sign in again.
   - Signing out first leaves the page (to the portal home, or `/`) and only then drops the token; the navigation runs with `flushSync`, because React Router renders navigations as transitions and a protected page would otherwise see the sign-out first and redirect to sign-in. This needs `RouterProvider` from `react-router/dom`, which wires `flushSync` and is the one the React Router docs recommend in the browser.
 - **Consequences:** One place to sign in, the same for every role; the portal context survives through `redirect`. The sign-in page has no tenant branding. The API needed no change.
+
+## D-066: The host calendar tells booked days from blocked ones and blocks a selected range
+
+- **Status:** Implemented (feature 12) — approved by the repository owner in the design
+- **Context:** Challenge item 8: "Blocking individual days in the calendar for a listing." The plan: the listing editor has "the same calendar in blocking mode (click or range). Bookings are visible but cannot be blocked". The public availability ([D-046](#d-046-public-availability-lists-the-taken-days-of-a-range)) lists the taken days without saying why; the host API lists a range's blocked days and blocks or unblocks `[from, to)` ([D-049](#d-049-a-blocking-request-covers-at-most-366-days)).
+- **Decision:**
+  - The shared `AvailabilityCalendar` gets two more day statuses, `booked` and `blocked`, a legend that lists the statuses a view uses, and an optional range selection (`selected` / `onSelectRange`, both `[from, to)`). The portal's view is unchanged.
+  - Booked days are the public availability's taken days minus the listing's blocked days; both are requested for the months shown, so no API change is needed.
+  - Free and blocked days can be selected; past, booked and not-yet-loaded days cannot, and a range that would cross one starts again from the day clicked (react-day-picker's `excludeDisabled`). One click selects one day; a second click makes a range. The selection `[first, last]` is sent as `[first, last + 1)`.
+  - "Block" is offered while the selection has a day that is not blocked, "Unblock" while it has a blocked one; blocking again is idempotent in the API. A 409 `DAY_ALREADY_BOOKED` is shown above the calendar.
+  - The requested range covers the months shown and the selection, so a range can be finished in another month (on phones one month is shown). A day keeps the status of the latest answer that covers it while a new range loads.
+- **Consequences:** The host sees why a day is taken and cannot select a booked one; the API stays the authority. Two requests per view. While both refetch after a change, a day just blocked can show as booked for a moment (noted as a possible improvement in `features/host/api.ts`).
+
+## D-067: The host's changes make cached responses stale through tags
+
+- **Status:** Implemented (feature 12)
+- **Context:** The plan: "Invalidation through tags". Until feature 12 no request changed data, so no endpoint had tags. The manual scenario asks that a day the host blocks is taken in the public calendar.
+- **Decision:** `baseApi` declares the tags `Listing` (one listing by id, or `LIST` for the lists), `Availability` (by listing id) and `Booking` (`LIST`). The portal's and the host's queries provide them. A listing edit invalidates that listing, the listing lists and the bookings (their titles and totals follow the listing, [D-048](#d-048-host-bookings-carry-the-listings-title-and-a-total-at-its-current-price)); blocking and unblocking invalidate the listing's availability (public and blocked days) and the listing lists (the portal's search by dates). A request that failed invalidates nothing.
+- **Consequences:** In the same browser, the portal and the host panel show a host's change at once. A few refetches are more than strictly needed (the host's listing table after blocking).
+
+## D-068: The host tables keep their filters in the URL and apply them at once
+
+- **Status:** Implemented (feature 12) — approved by the repository owner in the design
+- **Context:** Challenge items 7 and 9; the plan: a listings table "with search", a bookings table with "Filters by listing, status and date". The portal's filters live in the URL ([D-017](#d-017-listing-filters-live-in-the-url)).
+- **Decision:**
+  - The listing table keeps `q` and `page` in the URL, the booking table `listingId`, `status`, `from`, `to` and `page`, parsed with the API's `hostListingQuerySchema` and `hostBookingQuerySchema`: a bad parameter drops only itself, and a bad date range drops both dates. A change goes back to page 1.
+  - The search applies on submit; the booking filters apply as soon as they change (the dates once both are picked). The controls follow the URL without being remounted, so the focus stays on the control that changed.
+  - The listing filter is a combobox that searches the tenant's listings on the server (`q`, after a 300 ms pause in typing) and offers the first page of matches; the chosen listing's title is loaded by id. The editor links to the listing's bookings.
+  - The date filter uses the API's half-open range: a stay is listed when it takes a night of `[from, to)`, as in the portal's search.
+  - Tables are the UI kit's `table` (shadcn/ui); columns that do not fit a phone are hidden below `md` and their values shown under the first cell. TanStack Table is not used: paging, search and filters happen on the server and the columns are fixed.
+- **Consequences:** Filtered tables can be shared and survive a refresh. The booking table lists by check-in (the API's order), so its first page is the oldest history (noted as a possible improvement).

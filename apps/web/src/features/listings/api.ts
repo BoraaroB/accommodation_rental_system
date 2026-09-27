@@ -1,18 +1,14 @@
 import {
-  availabilityQuerySchema,
-  listingAvailabilitySchema,
   listingDtoSchema,
-  listingIdSchema,
   listingPageSchema,
   tenantSlugSchema,
-  type DateRange,
-  type ListingAvailability,
   type ListingDto,
   type ListingQuery,
   type Page,
 } from '@ars/shared';
 import { z } from 'zod';
 import { baseApi } from '../../api/baseApi';
+import { listingArgsSchema } from '../../api/listingArgs';
 
 export interface ListingsArgs {
   tenantSlug: string;
@@ -23,15 +19,6 @@ export interface ListingArgs {
   tenantSlug: string;
   id: string;
 }
-
-export interface AvailabilityArgs extends ListingArgs {
-  range: DateRange;
-}
-
-const listingArgsSchema = z.object({
-  tenantSlug: tenantSlugSchema,
-  id: listingIdSchema,
-});
 
 /** The public portal's listings (`/tenants/:tenantSlug/...`). */
 export const listingsApi = baseApi.injectEndpoints({
@@ -53,27 +40,16 @@ export const listingsApi = baseApi.injectEndpoints({
       // (`useListingFilters`), and RTK Query needs a schema whose input type is
       // its output type, which a coercing schema is not.
       responseSchema: listingPageSchema,
+      providesTags: [{ type: 'Listing', id: 'LIST' }],
     }),
     getListing: build.query<ListingDto, ListingArgs>({
       query: ({ tenantSlug, id }) => `/tenants/${tenantSlug}/listings/${id}`,
       argSchema: listingArgsSchema,
       responseSchema: listingDtoSchema,
-    }),
-    /** The days of `[from, to)` on which the listing is taken (D-046). */
-    getAvailability: build.query<ListingAvailability, AvailabilityArgs>({
-      query: ({ tenantSlug, id, range }) => ({
-        url: `/tenants/${tenantSlug}/listings/${id}/availability`,
-        params: range,
-      }),
-      argSchema: listingArgsSchema.extend({ range: availabilityQuerySchema }),
-      responseSchema: listingAvailabilitySchema,
+      providesTags: (_result, _error, { id }) => [{ type: 'Listing', id }],
     }),
   }),
 });
 
-export const {
-  useGetCitiesQuery,
-  useGetListingsQuery,
-  useGetListingQuery,
-  useGetAvailabilityQuery,
-} = listingsApi;
+export const { useGetCitiesQuery, useGetListingsQuery, useGetListingQuery } =
+  listingsApi;

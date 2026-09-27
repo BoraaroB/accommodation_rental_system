@@ -1,6 +1,6 @@
 import type { PropertyType } from '@ars/shared';
+import { PROPERTY_TYPES } from '../../../lib/propertyTypes';
 import { cn } from '../../../lib/utils';
-import { PROPERTY_TYPES } from '../propertyTypes';
 
 /** Stands in for a photo, which the data does not have (D-024). */
 export function PropertyPlaceholder({

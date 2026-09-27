@@ -1,8 +1,11 @@
-import { createBrowserRouter, type RouteObject } from 'react-router';
+import { createBrowserRouter, redirect, type RouteObject } from 'react-router';
 import {
   RequireHost,
   RequireSuperadmin,
 } from '../features/auth/components/RequireRole';
+import { HostBookingsPage } from '../pages/HostBookingsPage';
+import { HostListingPage } from '../pages/HostListingPage';
+import { HostListingsPage } from '../pages/HostListingsPage';
 import { LandingPage } from '../pages/LandingPage';
 import { ListingDetailPage } from '../pages/ListingDetailPage';
 import { LoginPage } from '../pages/LoginPage';
@@ -28,7 +31,7 @@ export function contentBoundary(children: RouteObject[]): RouteObject {
 /**
  * Browser routes. One sign-in page serves every portal and both panels
  * (D-065); the host and admin panels check the role and send a signed-out
- * user to sign in. The host and admin features add their pages.
+ * user to sign in. The admin feature adds its pages.
  */
 // Possible improvement (not in the plan): load the pages with the routes'
 // `lazy`, so the first visit downloads less (the build warns above 500 kB).
@@ -76,7 +79,15 @@ export const routes: RouteObject[] = [
                 {
                   path: 'host',
                   Component: HostLayout,
-                  children: [contentBoundary([])],
+                  children: [
+                    contentBoundary([
+                      // The panel opens on the listings (sign-in lands here).
+                      { index: true, loader: () => redirect('listings') },
+                      { path: 'listings', Component: HostListingsPage },
+                      { path: 'listings/:id', Component: HostListingPage },
+                      { path: 'bookings', Component: HostBookingsPage },
+                    ]),
+                  ],
                 },
               ],
             },

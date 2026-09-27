@@ -1,6 +1,6 @@
 import type { ListingDto } from '@ars/shared';
 import { pluralize } from '../../../lib/format';
-import { PROPERTY_TYPES } from '../propertyTypes';
+import { PROPERTY_TYPES } from '../../../lib/propertyTypes';
 
 /** Type, guests and bedrooms in one line, e.g. "Apartment · 4 guests · 2 bedrooms". */
 export function ListingFacts({

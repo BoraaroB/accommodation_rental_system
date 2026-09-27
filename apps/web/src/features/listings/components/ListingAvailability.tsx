@@ -1,11 +1,6 @@
-import {
-  addMonths,
-  startOfMonth,
-  today,
-  type DateRange,
-  type IsoDate,
-} from '@ars/shared';
-import { useMemo, useState } from 'react';
+import type { DateRange, IsoDate } from '@ars/shared';
+import { useMemo } from 'react';
+import { useGetAvailabilityQuery } from '../../../api/availabilityApi';
 import { getErrorMessage, getRequestId } from '../../../api/errors';
 import {
   AvailabilityCalendar,
@@ -13,10 +8,7 @@ import {
 } from '../../../components/AvailabilityCalendar';
 import { ErrorBoundary } from '../../../components/ui/error-boundary';
 import { ErrorState } from '../../../components/ui/error-state';
-import { useGetAvailabilityQuery } from '../api';
-
-/** How far ahead the calendar goes: its first month is at most a year away. */
-const MAX_MONTHS_AHEAD = 11;
+import { useCalendarMonths } from '../../../hooks/useCalendarMonths';
 
 /**
  * When the listing is available to book (challenge item 4): the calendar of
@@ -32,23 +24,12 @@ export function ListingAvailability({
   /** The searched stay: highlighted, and its month is shown first. */
   stay?: DateRange;
 }) {
-  const firstDay = today();
-  const minMonth = startOfMonth(firstDay);
-  const maxMonth = addMonths(minMonth, MAX_MONTHS_AHEAD);
-  const [month, setMonth] = useState(() => {
-    const stayMonth = startOfMonth(stay?.from ?? firstDay);
-    return stayMonth > maxMonth ? maxMonth : stayMonth;
-  });
-
-  // The two months shown, from today on: the API answers only for upcoming days.
-  const range: DateRange = {
-    from: month < firstDay ? firstDay : month,
-    to: addMonths(month, 2),
-  };
+  const { firstDay, minMonth, maxMonth, month, setMonth, shown } =
+    useCalendarMonths(stay?.from);
   const availability = useGetAvailabilityQuery({
     tenantSlug,
     id: listingId,
-    range,
+    range: shown,
   });
   const loaded = availability.currentData;
   const taken = useMemo(() => new Set(loaded?.unavailableDays), [loaded]);

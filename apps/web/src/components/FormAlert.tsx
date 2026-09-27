@@ -1,7 +1,7 @@
-import { getErrorMessage, isServerOrNetworkError } from '../../../api/errors';
+import { getErrorMessage, isServerOrNetworkError } from '../api/errors';
 
 /**
- * A failed sign-in or registration above the form. Server and network errors
+ * A request that failed, above its form. Server and network errors
  * are left to the error middleware's toast, so they are not shown twice.
  */
 export function FormAlert({ error }: { error: unknown }) {
