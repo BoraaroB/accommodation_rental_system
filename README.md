@@ -88,6 +88,8 @@ One sign-in page serves every portal and both panels: `/login` (and `/register`,
 
 In the host panel (sign in as `host1.adriatic@example.com`), Listings searches the tenant's listings by title or city and opens one in the editor: change its title, type, price, guests or bedrooms, and block or unblock days in its calendar (select a day, or a first and a last day). Bookings lists the tenant's bookings, filtered by listing, status and dates.
 
+In the admin panel (sign in as `admin@example.com`), Tenants lists every tenant: create one with "New tenant" (name and slug; logo URL, primary colour and contact e-mail are optional), open one to change its configuration and add or remove its hosts, or delete one by typing its slug to confirm. A host added with an e-mail that already has an account keeps that account's name and password.
+
 The dev server forwards `/api` to `API_PROXY_TARGET` (the API started above), so the browser calls the API on the web app's own origin. Every variable in `apps/web/.env.example` is required: the app checks `VITE_API_BASE_URL` when it loads, and the dev server checks `WEB_PORT` and `API_PROXY_TARGET` when it starts.
 
 ## Commands

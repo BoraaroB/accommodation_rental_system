@@ -1,10 +1,13 @@
+import { HouseIcon } from 'lucide-react';
 import { Link, NavLink, Outlet } from 'react-router';
+import { buttonVariants } from '../../components/ui/button';
 import { AccountMenu } from '../../features/auth/components/AccountMenu';
 import { cn } from '../../lib/utils';
 
 /**
  * The platform admin panel; it belongs to no tenant, so it has no branding.
- * `RequireSuperadmin` lets only superadmins see it.
+ * `RequireSuperadmin` lets only superadmins see it. "All portals" leads to the
+ * landing page, as in a portal's header.
  */
 export function AdminLayout() {
   return (
@@ -29,7 +32,11 @@ export function AdminLayout() {
               Tenants
             </NavLink>
           </nav>
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <Link to="/" className={buttonVariants({ variant: 'ghost' })}>
+              <HouseIcon aria-hidden="true" />
+              <span className="sr-only sm:not-sr-only">All portals</span>
+            </Link>
             <AccountMenu />
           </div>
         </div>

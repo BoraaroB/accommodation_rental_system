@@ -213,7 +213,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-029: Deleting a tenant cascades; users stay
 
-- **Status:** Implemented (cascading foreign keys in feature 3, `DELETE /admin/tenants/:tenantId` in feature 8)
+- **Status:** Implemented (cascading foreign keys in feature 3, `DELETE /admin/tenants/:tenantId` in feature 8, the confirmation in the admin panel in feature 13 — a hard delete, kept by the repository owner over a soft delete, [D-069](#d-069-the-admin-panel-edits-tenants-and-hosts-in-forms-that-follow-the-apis-rules))
 - **Decision:** Deleting a tenant cascades to its listings, bookings, blocked days and host memberships. Users are not deleted, because identity is global ([D-003](#d-003-global-client-identity)). The admin UI asks for the slug to be typed as confirmation.
 - **Consequences:** No orphaned tenant data; a person who hosted the deleted tenant keeps their account.
 
@@ -571,3 +571,23 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - The date filter uses the API's half-open range: a stay is listed when it takes a night of `[from, to)`, as in the portal's search.
   - Tables are the UI kit's `table` (shadcn/ui); columns that do not fit a phone are hidden below `md` and their values shown under the first cell. TanStack Table is not used: paging, search and filters happen on the server and the columns are fixed.
 - **Consequences:** Filtered tables can be shared and survive a refresh. The booking table lists by check-in (the API's order), so its first page is the oldest history (noted as a possible improvement).
+
+## D-069: The admin panel edits tenants and hosts in forms that follow the API's rules
+
+- **Status:** Implemented (feature 13) — approved by the repository owner in the design
+- **Context:** Challenge items 10–12: "Creating, editing and deleting tenants", "Tenant configuration. Name and slug are required …", "Adding host accounts to a tenant." The plan: a tenants table with deletion confirmed by typing the slug, a configuration editor and a Hosts section. The API edits a tenant as a merge patch ([D-052](#d-052-tenant-configuration-is-edited-as-a-merge-patch)) and reuses an existing account as a host without changing it ([D-053](#d-053-adding-a-host-reuses-an-existing-account-without-changing-it)).
+- **Decision:**
+  - Routes: `/admin` sends on to `/admin/tenants` (the table), `/admin/tenants/new` and `/admin/tenants/:tenantId` (configuration and hosts). The parameter is the tenant's id, as in the API ([D-051](#d-051-the-admin-panel-addresses-tenants-by-id)), so a page survives a slug change.
+  - One form creates and edits a tenant, validated with `tenantCreateSchema`: name and slug required; logo URL, primary colour and contact e-mail optional, a blank one is `null`. An edit sends only the fields that changed (React Hook Form's dirty fields), a cleared one as `null`, and can be saved only after a change. A changed slug says that the old portal address stops working. The colour is typed as `#rrggbb`, with the browser's colour picker next to it writing the same field (no library).
+  - A known conflict is shown on its field: 409 `SLUG_TAKEN` (or `UNIQUE_VIOLATION`, when two requests race for one slug) on the slug, 409 `ALREADY_HOST` on the host's e-mail; other errors above the form.
+  - Creating a tenant opens its page, with a toast naming the live portal, so the hosts are added next.
+  - Deleting a tenant stays a hard delete (D-029); asked during the design, the repository owner kept it over a soft delete, which would need a schema and API change. An alert dialog names what is deleted and that accounts stay; "Delete tenant" is enabled only when the slug is typed exactly; the dialog cannot be closed while the request runs, stays open with the error when it fails, and closes with a toast when it succeeds — or when the tenant was already deleted (404), after which the list drops the row. Removing a host is a plain confirmation: only the membership goes; a host already removed closes it the same way.
+  - Adding a host takes e-mail, name and password (`hostInputSchema`); the form says the name and password apply to a new account only, and `accountCreated: false` leaves a notice that the existing account now hosts the tenant with its name and password unchanged.
+- **Consequences:** The web app sends only what the API accepts, and a conflict points at the field to change. A tenant is deleted in two steps (open, type the slug), which is deliberate for an action that cannot be undone.
+
+## D-070: The admin's changes make every tenant response stale
+
+- **Status:** Implemented (feature 13) — approved by the repository owner in the design
+- **Context:** A tenant's name, slug and branding are also served by the public `GET /tenants` (the landing page) and `GET /tenants/:tenantSlug` (a portal's header and colour). The host panel's tags ([D-067](#d-067-the-hosts-changes-make-cached-responses-stale-through-tags)) do not cover tenants.
+- **Decision:** `baseApi` adds the tags `Tenant` and `Host`. `Tenant` has no id: the admin list and tenant and both public tenant queries provide it, and creating, editing or deleting a tenant invalidates it. `Host` is by tenant id: the hosts list provides it, adding and removing a host invalidate it. A deletion that answers 404 (the tenant or membership was already gone) also invalidates, since the list still showing it is out of date; any other failed request invalidates nothing.
+- **Consequences:** After an edit the landing page and the portal show the new name and colour at once in the same browser, even from a cached response (checked in the manual scenario). One tag for every tenant refetches all tenant responses on screen after any change, which is a handful of small requests.

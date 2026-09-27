@@ -159,10 +159,11 @@ main.tsx          root: error hooks, Redux provider, router (RouterProvider from
 app/              router.ts (all routes), layouts/ (Root, Site, Portal, Host, Admin)
 pages/            route components: LandingPage, LoginPage, RegisterPage, PortalHomePage,
                   ListingDetailPage, HostListingsPage, HostListingPage, HostBookingsPage,
-                  NotFoundPage, errors/
+                  AdminTenantsPage, AdminNewTenantPage, AdminTenantPage, NotFoundPage, errors/
 features/<name>/  api.ts (injected endpoints), components/, hooks/ — tenants (portals, branding),
                   listings (URL filters, search, cards, availability), auth (sign-in, role checks,
-                  account menu), host (listing table, editor, blocking calendar, bookings); admin follows
+                  account menu), host (listing table, editor, blocking calendar, bookings),
+                  admin (tenant table and deletion, tenant form, hosts)
 components/       shared components: ui/ (the UI kit: shadcn/ui on Base UI), AvailabilityCalendar,
                   DateRangePicker, Pager, MoneyInput, FormAlert, EmptyPageState
 hooks/            hooks shared by several features: useTenantSlug, useMediaQuery, useCalendarMonths
@@ -178,7 +179,7 @@ test/             Vitest setup, the fetch stub (apiStub), fixtures and render he
 
 - A page composes feature components. Code used by more than one feature goes into the shared folders, which never import from `features/` or `pages/`.
 - `api/baseApi.ts`: features inject their endpoints; response schemas are checked outside production, and a mismatch becomes a normal error.
-- `components/ui` is **shadcn/ui on Base UI** ([D-062](decisions.md#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the CLI (`npx shadcn add <name>`, configured by `components.json`) copies each component's source here, and it is ours to adapt. Generated: `button` (plus an `onPrimary` variant for the portal header), `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, `dropdown-menu` (plus `DropdownMenuLinkItem` on Base UI's `Menu.LinkItem`), `table`, plus `separator` and `textarea` (used by `field` and `input-group`). Our own: `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state`, `error-boundary`. Design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first; icons from lucide-react; links styled as buttons are router `Link`s with `buttonVariants`.
+- `components/ui` is **shadcn/ui on Base UI** ([D-062](decisions.md#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the CLI (`npx shadcn add <name>`, configured by `components.json`) copies each component's source here, and it is ours to adapt. Generated: `button` (plus an `onPrimary` variant for the portal header), `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, `dropdown-menu` (plus `DropdownMenuLinkItem` on Base UI's `Menu.LinkItem`), `table`, `alert-dialog` (its backdrop on `bg-foreground/10`), plus `separator` and `textarea` (used by `field` and `input-group`). Our own: `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state`, `error-boundary`. Design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first; icons from lucide-react; links styled as buttons are router `Link`s with `buttonVariants`.
 
 **Routes:**
 
@@ -192,7 +193,10 @@ test/             Vitest setup, the fetch stub (apiStub), fixtures and render he
 | `/:tenantSlug/host/listings`     | `HostListingsPage`                                                     | hosts of that tenant, superadmin |
 | `/:tenantSlug/host/listings/:id` | `HostListingPage`: editor and calendar                                 | hosts of that tenant, superadmin |
 | `/:tenantSlug/host/bookings`     | `HostBookingsPage`                                                     | hosts of that tenant, superadmin |
-| `/admin/...`                     | `RequireSuperadmin` → `AdminLayout`                                    | superadmin                       |
+| `/admin`                         | `RequireSuperadmin` → `AdminLayout`; sends on to `tenants`             | superadmin                       |
+| `/admin/tenants`                 | `AdminTenantsPage`: the table and deletion                             | superadmin                       |
+| `/admin/tenants/new`             | `AdminNewTenantPage`                                                   | superadmin                       |
+| `/admin/tenants/:tenantId`       | `AdminTenantPage`: configuration and hosts                             | superadmin                       |
 | `*`                              | —                                                                      | NotFound                         |
 
 `admin`, `login` and `register` are reserved tenant slugs, and React Router ranks static segments first, so they never reach a portal.
@@ -229,7 +233,16 @@ test/             Vitest setup, the fetch stub (apiStub), fixtures and render he
 - Editor: react-hook-form with `listingUpdateSchema`; the price is typed in euros (`MoneyInput`) and sent in cents; 409 `MAX_GUESTS_BELOW_BOOKING` shows on the guests field. Below it, `BlockingCalendar` ([D-066](decisions.md#d-066-the-host-calendar-tells-booked-days-from-blocked-ones-and-blocks-a-selected-range)): booked days (public availability minus blocked days) cannot be selected; a selected day or range is blocked or unblocked.
 - Bookings: filters by listing (`ListingPicker`, a combobox that searches on the server), status and dates; the table shows the stored status and the time badge (past, in progress, upcoming; [D-013](decisions.md#d-013-stale-booking-statuses-are-kept-as-is)) and the stay's total.
 - Cache tags ([D-067](decisions.md#d-067-the-hosts-changes-make-cached-responses-stale-through-tags)): an edit or a blocked day refreshes the portal's cached listing, lists and availability.
-  **Tests:** page tests go through the real router and store with a stubbed `fetch` behind the test API URL `http://api.test/api/v1` ([D-059](decisions.md#d-059-web-tests-stub-fetch-behind-an-absolute-test-api-url)).
+
+**Admin panel (feature 13, [D-069](decisions.md#d-069-the-admin-panel-edits-tenants-and-hosts-in-forms-that-follow-the-apis-rules)):**
+
+- `AdminLayout` has one tab, Tenants, and an "All portals" link to the landing page, as in a portal's header; `/admin` sends on to the table, where sign-in lands. Tenant pages are addressed by id ([D-051](decisions.md#d-051-the-admin-panel-addresses-tenants-by-id)).
+- Tenants: a table (name → the tenant's page, slug → its portal, contact and colour from `md` up) with "New tenant". Deleting opens an alert dialog that is confirmed by typing the slug ([D-029](decisions.md#d-029-deleting-a-tenant-cascades-users-stay)).
+- `TenantForm` creates and edits: `tenantCreateSchema`; an edit sends only the changed fields, a cleared one as `null` (merge patch, [D-052](decisions.md#d-052-tenant-configuration-is-edited-as-a-merge-patch)); 409 `SLUG_TAKEN` shows on the slug; the colour has the browser's picker next to its text field. Creating opens the new tenant's page.
+- Hosts: the list with Remove (a plain confirmation) and `AddHostForm`; 409 `ALREADY_HOST` shows on the e-mail, and an existing account (`accountCreated: false`) leaves a notice that its name and password were not changed.
+- Cache tags ([D-070](decisions.md#d-070-the-admins-changes-make-every-tenant-response-stale)): a tenant change refreshes every tenant response, the landing page and portal branding included; a host change refreshes that tenant's hosts.
+
+**Tests:** page tests go through the real router and store with a stubbed `fetch` behind the test API URL `http://api.test/api/v1` ([D-059](decisions.md#d-059-web-tests-stub-fetch-behind-an-absolute-test-api-url)).
 
 **Dev server:** `vite.config.ts` reads `WEB_PORT` and `API_PROXY_TARGET` (validated only when the dev server runs) and forwards `/api` to the API, so the browser calls the API on its own origin.
 
