@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
 import { getErrorMessage, getRequestId } from '../../api/errors';
-import { EmptyState } from './EmptyState';
-import { ErrorState } from './ErrorState';
-import { Skeleton } from './Skeleton';
+import { EmptyState } from './empty-state';
+import { ErrorState } from './error-state';
+import { Skeleton } from './skeleton';
 
 /** The part of an RTK Query hook result that `QueryState` reads. */
 export interface QueryStateQuery<T> {

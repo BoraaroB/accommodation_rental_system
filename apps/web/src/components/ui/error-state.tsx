@@ -1,4 +1,5 @@
-import { Button } from './Button';
+import { TriangleAlertIcon } from 'lucide-react';
+import { Button } from './button';
 
 export interface ErrorStateProps {
   title?: string;
@@ -19,15 +20,18 @@ export function ErrorState({
       role="alert"
       className="flex flex-col items-center gap-2 px-4 py-12 text-center"
     >
-      <p className="text-base font-semibold text-text">{title}</p>
-      <p className="max-w-md text-sm text-muted">{message}</p>
+      <span className="mb-2 flex size-10 items-center justify-center rounded-lg bg-destructive/10 text-destructive">
+        <TriangleAlertIcon aria-hidden="true" className="size-5" />
+      </span>
+      <p className="text-base font-medium">{title}</p>
+      <p className="max-w-md text-sm text-muted-foreground">{message}</p>
       {requestId && (
-        <p className="text-xs text-muted">
+        <p className="text-xs text-muted-foreground">
           Request id: <span className="font-mono">{requestId}</span>
         </p>
       )}
       {onRetry && (
-        <Button variant="secondary" className="mt-2" onClick={onRetry}>
+        <Button variant="outline" className="mt-2" onClick={onRetry}>
           Retry
         </Button>
       )}

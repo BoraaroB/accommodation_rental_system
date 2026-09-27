@@ -82,6 +82,8 @@ cp apps/web/.env.example apps/web/.env
 npm run dev -w apps/web           # http://localhost:5173, with the API running
 ```
 
+Open `/` for the list of portals, then a portal such as `/adriatic`: search by city, dates and guests, filter by price, sort, and open a listing to see its availability calendar. Filters live in the URL, so a filtered page can be shared or bookmarked.
+
 The dev server forwards `/api` to `API_PROXY_TARGET` (the API started above), so the browser calls the API on the web app's own origin. Every variable in `apps/web/.env.example` is required: the app checks `VITE_API_BASE_URL` when it loads, and the dev server checks `WEB_PORT` and `API_PROXY_TARGET` when it starts.
 
 ## Commands

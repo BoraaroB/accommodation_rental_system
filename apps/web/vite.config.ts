@@ -1,5 +1,6 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import { z } from 'zod';
 
@@ -11,11 +12,16 @@ const devServerEnvSchema = z.object({
 });
 
 // https://vite.dev/config/
+// `@/…` imports resolve to `src/…` (the UI kit's generated components use them).
+const resolve = {
+  alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
+};
+
 export default defineConfig(({ command, mode }) => {
   const plugins = [react(), tailwindcss()];
   // A production build does not run the dev server, so it needs neither value.
   if (command === 'build') {
-    return { plugins };
+    return { plugins, resolve };
   }
 
   const result = devServerEnvSchema.safeParse(loadEnv(mode, process.cwd(), ''));
@@ -28,6 +34,7 @@ export default defineConfig(({ command, mode }) => {
 
   return {
     plugins,
+    resolve,
     server: {
       port: WEB_PORT,
       strictPort: true,

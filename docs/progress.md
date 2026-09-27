@@ -1,10 +1,10 @@
 # Progress
 
 - **Last updated:** 2026-09-26
-- **Current feature:** none — feature 9 is merged; feature 10 has not started
-- **Current step:** —
-- **Next step:** Feature 10 — Web portal (`feat/web-portal`): restate the scope, verify the docs, show the design, then set it to `in progress` with its checklist and open `docs/features/10-web-portal.md`
-- **Blocked / waiting on:** the repository owner's go-ahead for feature 10 and the branch `feat/web-portal` created from an up-to-date `main`
+- **Current feature:** 10 — Web portal (`feat/web-portal`)
+- **Current step:** done – awaiting commit (shadcn/ui rework reviewed, fixes applied, checks green)
+- **Next step:** the repository owner runs the six case-only `git mv` renames, commits, opens and merges the PR; then record the commit message and PR number in the feature log and set the status to `PR merged`
+- **Blocked / waiting on:** the repository owner: renames, commit, PR and merge of `feat/web-portal`
 
 ## Rules
 
@@ -20,24 +20,51 @@
 
 Statuses: `not started` · `in progress` · `done – awaiting commit` · `committed` · `PR merged`
 
-| #   | Feature                  | Branch               | Status      | PR  | Done       |
-| --- | ------------------------ | -------------------- | ----------- | --- | ---------- |
-| 1   | Repo setup               | `chore/repo-setup`   | PR merged   | #1  | 2026-09-24 |
-| 2   | API bootstrap            | `feat/api-bootstrap` | PR merged   | #3  | 2026-09-24 |
-| 3   | Database schema          | `feat/db-schema`     | PR merged   | #5  | 2026-09-24 |
-| 4   | Database seed            | `feat/db-seed`       | PR merged   | #7  | 2026-09-24 |
-| 5   | API auth                 | `feat/api-auth`      | PR merged   | #9  | 2026-09-25 |
-| 6   | API portal (public)      | `feat/api-portal`    | PR merged   | #11 | 2026-09-25 |
-| 7   | API host panel           | `feat/api-host`      | PR merged   | #13 | 2026-09-25 |
-| 8   | API admin panel          | `feat/api-admin`     | PR merged   | #15 | 2026-09-25 |
-| 9   | Web bootstrap            | `feat/web-bootstrap` | PR merged   | #17 | 2026-09-26 |
-| 10  | Web portal               | `feat/web-portal`    | not started |     |            |
-| 11  | Web auth                 | `feat/web-auth`      | not started |     |            |
-| 12  | Web host panel           | `feat/web-host`      | not started |     |            |
-| 13  | Web admin panel          | `feat/web-admin`     | not started |     |            |
-| 14  | Docker                   | `chore/docker`       | not started |     |            |
-| 15  | Final documentation pass | `docs/final-pass`    | not started |     |            |
+| #   | Feature                  | Branch               | Status                 | PR  | Done       |
+| --- | ------------------------ | -------------------- | ---------------------- | --- | ---------- |
+| 1   | Repo setup               | `chore/repo-setup`   | PR merged              | #1  | 2026-09-24 |
+| 2   | API bootstrap            | `feat/api-bootstrap` | PR merged              | #3  | 2026-09-24 |
+| 3   | Database schema          | `feat/db-schema`     | PR merged              | #5  | 2026-09-24 |
+| 4   | Database seed            | `feat/db-seed`       | PR merged              | #7  | 2026-09-24 |
+| 5   | API auth                 | `feat/api-auth`      | PR merged              | #9  | 2026-09-25 |
+| 6   | API portal (public)      | `feat/api-portal`    | PR merged              | #11 | 2026-09-25 |
+| 7   | API host panel           | `feat/api-host`      | PR merged              | #13 | 2026-09-25 |
+| 8   | API admin panel          | `feat/api-admin`     | PR merged              | #15 | 2026-09-25 |
+| 9   | Web bootstrap            | `feat/web-bootstrap` | PR merged              | #17 | 2026-09-26 |
+| 10  | Web portal               | `feat/web-portal`    | done – awaiting commit |     |            |
+| 11  | Web auth                 | `feat/web-auth`      | not started            |     |            |
+| 12  | Web host panel           | `feat/web-host`      | not started            |     |            |
+| 13  | Web admin panel          | `feat/web-admin`     | not started            |     |            |
+| 14  | Docker                   | `chore/docker`       | not started            |     |            |
+| 15  | Final documentation pass | `docs/final-pass`    | not started            |     |            |
 
 ## Current feature checklist
 
-No feature in progress. The checklist of the next feature is added when it starts; the history of finished features is in [features/](features/).
+Feature 10 — Web portal ([log](features/10-web-portal.md)):
+
+- [x] Scope, docs check (react-hook-form + resolvers, RTK `argSchema`, `fetch` in jsdom, `<dialog>` in jsdom) and design — approved
+- [x] `@ars/shared`: `startOfMonth`, `addMonths`, `centsToEuros` (`isoWeekday` too, removed with the hand-made calendar)
+- [x] Web test setup: absolute test API URL, `fetch` guard, `stubApi`, `<dialog>` shim
+- [x] UI kit: `Select`, `Drawer`, `Pagination`
+- [x] Endpoints: tenants and listings; `lib/format.ts`
+- [x] Landing page and tenant branding in `PortalLayout`; `ScrollRestoration`
+- [x] Filters in the URL: `listingFilters`, `useListingFilters`, `SearchBar`, `ListingFilters`, chips, sort
+- [x] Portal home: cards, placeholder, rating badge, price summary, pagination, empty state
+- [x] Listing detail and `AvailabilityCalendar`
+- [x] Tests
+- [x] `/check` and the `reviewer` agent; review fixes applied
+- [x] Manual scenario at 375 px and on desktop (headless Chrome; tenant colour on a real page not checked)
+- [x] Feature log, `decisions.md`, `architecture.md`, README
+
+Reopened after the owner's browser review (plan approved 2026-09-26: shadcn/ui on Base UI, Sonner, all inside feature 10):
+
+- [x] Navigation: landing navbar, "All portals" in the portal header
+- [x] `shadcn init` (Base UI), `@/` alias, `cn`, theme variables and tenant branding via `--primary`
+- [x] UI kit from shadcn: Button, Input, Label, Field, Select, Combobox, Card, Badge, Skeleton, Popover, Calendar, Sheet, Pagination, Sonner, Empty
+- [x] Portal on the new kit: search (city combobox, date range picker, guests), sort, filter sheet, cards, chips, lucide placeholders
+- [x] `AvailabilityCalendar` on the shadcn Calendar (react-day-picker)
+- [x] Toasts on Sonner, out of the `ui` slice
+- [x] Tests updated
+- [x] `/check` and the `reviewer` agent; review fixes applied
+- [x] Manual scenario at 375 px and on desktop
+- [x] Docs: new decisions, updated decisions, plan changes, `architecture.md`, feature log, `ui-component` skill

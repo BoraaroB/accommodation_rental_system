@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { reportError } from '../../lib/logger';
-import { ErrorBoundary } from './ErrorBoundary';
+import { ErrorBoundary } from './error-boundary';
 
 vi.mock('../../lib/logger', () => ({ reportError: vi.fn() }));
 

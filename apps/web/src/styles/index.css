@@ -1,12 +1,25 @@
 @import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn/tailwind.css';
+@import '@fontsource-variable/geist';
 @import './tokens.css';
 
+/*
+ * The UI kit's `dark:` classes apply only under a `.dark` ancestor, never from
+ * the system setting: there is no dark theme yet, so the page stays light.
+ */
+@custom-variant dark (&:is(.dark *));
+
 @layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  html {
+    @apply font-sans;
+  }
   body {
     min-height: 100dvh;
-    background-color: var(--color-surface);
-    color: var(--color-text);
-    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
+    @apply bg-background text-foreground;
   }
 }

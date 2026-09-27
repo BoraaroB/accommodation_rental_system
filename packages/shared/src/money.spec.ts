@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { eurosToCents, stayTotalCents } from './money.js';
+import { centsToEuros, eurosToCents, stayTotalCents } from './money.js';
 
 describe('eurosToCents', () => {
   it.each([
@@ -45,4 +45,21 @@ describe('stayTotalCents', () => {
   it('multiplies the nights by the price per night', () => {
     expect(stayTotalCents('2026-12-30', '2027-01-02', 12000)).toBe(36000);
   });
+});
+
+describe('centsToEuros', () => {
+  it.each([
+    [12000, 120],
+    [1999, 19.99],
+    [0, 0],
+  ])('converts %i cents to %s EUR', (cents, euros) => {
+    expect(centsToEuros(cents)).toBe(euros);
+  });
+
+  it.each([12.5, Number.NaN])(
+    'rejects %s, which is not integer cents',
+    (cents) => {
+      expect(() => centsToEuros(cents)).toThrow(RangeError);
+    },
+  );
 });

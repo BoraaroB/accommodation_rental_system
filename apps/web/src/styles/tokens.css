@@ -1,27 +1,69 @@
 /*
- * Design tokens: the only place colour values live. Components use the
- * utilities these generate (`bg-primary`, `text-muted`, `rounded-card`, …).
- * Tailwind's default palette is removed, so a raw colour utility does not exist.
+ * Design tokens: the only place colour values live (D-056). They follow the
+ * shadcn/ui theme: each colour is a CSS variable on :root, exposed to Tailwind
+ * by `@theme inline`, so `bg-primary` compiles to `var(--primary)` and a
+ * tenant portal recolours everything under it by overriding `--primary` and
+ * `--ring` at runtime. Tailwind's default palette is removed, so a raw colour
+ * utility such as `bg-blue-500` does not exist.
  */
 @theme {
   --color-*: initial;
+  --font-sans: 'Geist Variable', system-ui, sans-serif;
+}
 
-  /* Brand colour; a tenant portal overrides it at runtime with its primaryColor. */
-  --color-primary: #0b5cad;
-  --color-on-primary: #ffffff;
+@theme inline {
+  --font-heading: var(--font-sans);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-success: var(--success);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
 
-  --color-surface: #f5f7fa; /* page background */
-  --color-surface-raised: #ffffff; /* cards, inputs, header */
-  --color-text: #1a1f2b;
-  --color-muted: #5b6474;
-  --color-border: #d6dbe3;
-  --color-danger: #b42318;
-  --color-success: #067647;
+:root {
+  --radius: 0.625rem;
 
-  --radius-control: 0.5rem;
-  --radius-card: 0.75rem;
+  --background: oklch(0.985 0.003 258); /* page */
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
 
-  --font-sans:
-    system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
-    sans-serif;
+  /* Brand colour; a tenant portal overrides it with its primaryColor. */
+  --primary: oklch(0.478 0.147 254.3);
+  --primary-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.96 0.003 258);
+  --muted-foreground: oklch(0.52 0.01 258);
+  --accent: oklch(0.96 0.01 258);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --success: oklch(0.499 0.117 157.1);
+  --border: oklch(0.922 0.004 258);
+  --input: oklch(0.88 0.006 258);
+  --ring: oklch(0.478 0.147 254.3);
 }

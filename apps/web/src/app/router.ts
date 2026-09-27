@@ -1,5 +1,8 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
+import { LandingPage } from '../pages/LandingPage';
+import { ListingDetailPage } from '../pages/ListingDetailPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
+import { PortalHomePage } from '../pages/PortalHomePage';
 import { RootErrorBoundary } from '../pages/errors/RootErrorBoundary';
 import { RouteErrorState } from '../pages/errors/RouteErrorState';
 import { AdminLayout } from './layouts/AdminLayout';
@@ -16,15 +19,19 @@ export function contentBoundary(children: RouteObject[]): RouteObject {
 }
 
 /**
- * Browser routes. Pages are added by the portal, auth, host and admin
- * features; the host and admin groups get role checks with sign-in.
+ * Browser routes. The auth, host and admin features add their pages; the
+ * host and admin groups get role checks with sign-in.
  */
+// Possible improvement (not in the plan): load the pages with the routes'
+// `lazy`, so the first visit downloads less (the build warns above 500 kB).
 export const routes: RouteObject[] = [
   {
     path: '/',
     Component: RootLayout,
     ErrorBoundary: RootErrorBoundary,
     children: [
+      // The demo's landing page: every portal.
+      { index: true, Component: LandingPage },
       // Platform admin panel (superadmin). `admin` is a reserved tenant slug.
       {
         path: 'admin',
@@ -37,6 +44,8 @@ export const routes: RouteObject[] = [
         Component: PortalLayout,
         children: [
           contentBoundary([
+            { index: true, Component: PortalHomePage },
+            { path: 'listings/:id', Component: ListingDetailPage },
             {
               path: 'host',
               Component: HostLayout,

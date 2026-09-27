@@ -1,11 +1,13 @@
-import { cx } from '../../lib/cx';
+import { cn } from 'cn';
 
-/** A grey placeholder block while content loads; size it with `className`. */
-export function Skeleton({ className }: { className?: string }) {
+function Skeleton({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
-      aria-hidden="true"
-      className={cx('animate-pulse rounded-control bg-border/60', className)}
+      data-slot="skeleton"
+      className={cn('animate-pulse rounded-md bg-muted', className)}
+      {...props}
     />
   );
 }
+
+export { Skeleton };

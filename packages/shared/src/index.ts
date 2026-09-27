@@ -54,11 +54,13 @@ export {
 } from './date-range.js';
 export {
   addDays,
+  addMonths,
   daysBetween,
   eachDay,
   isIsoDate,
   isoDateSchema,
   parseIsoDate,
+  startOfMonth,
   toIsoDate,
   today,
 } from './date.js';
@@ -83,7 +85,7 @@ export {
   type ListingQuery,
   type ListingSort,
 } from './listing-query.js';
-export { eurosToCents, stayTotalCents } from './money.js';
+export { centsToEuros, eurosToCents, stayTotalCents } from './money.js';
 export {
   DEFAULT_PAGE_SIZE,
   MAX_PAGE_SIZE,

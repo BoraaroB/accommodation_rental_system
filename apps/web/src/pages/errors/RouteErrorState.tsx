@@ -1,6 +1,6 @@
 import { useRouteError } from 'react-router';
-import { EmptyState } from '../../components/ui/EmptyState';
-import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/empty-state';
+import { ErrorState } from '../../components/ui/error-state';
 import { describeRouteError } from './routeError';
 
 /**
