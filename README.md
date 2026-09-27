@@ -60,9 +60,9 @@ Every variable in `apps/api/.env.example` is required; the API refuses to start 
 
 Sign in with a demo account: `POST /api/v1/auth/login` with `{ "email", "password" }` returns `{ "accessToken" }`, sent as `Authorization: Bearer <token>`. `GET /api/v1/auth/me` returns the user and the tenants they host. `POST /api/v1/auth/register` creates a client. The token holds only the user's id and e-mail; what the user may do in a tenant is worked out on every request ([D-007](docs/decisions.md#d-007-roles-are-not-in-the-token)).
 
-The public portal needs no sign-in: `GET /api/v1/tenants` lists the portals, and `GET /api/v1/t/adriatic/listings?city=Zagreb&guests=2&from=YYYY-MM-DD&to=YYYY-MM-DD&sort=price_asc` searches one of them. The routes are listed in [architecture.md](docs/architecture.md#api-modules).
+The public portal needs no sign-in: `GET /api/v1/tenants` lists the portals, and `GET /api/v1/tenants/adriatic/listings?city=Zagreb&guests=2&from=YYYY-MM-DD&to=YYYY-MM-DD&sort=price_asc` searches one of them. The routes are listed in [architecture.md](docs/architecture.md#api-modules).
 
-The host panel needs a host's token for that tenant (or the superadmin's): `GET /api/v1/t/adriatic/host/listings?q=split` searches the listings, `PATCH /api/v1/t/adriatic/host/listings/:id` edits one, `POST /api/v1/t/adriatic/host/listings/:id/blocked-days` with `{ "from", "to" }` blocks the days of `[from, to)` and `GET /api/v1/t/adriatic/host/bookings?status=confirmed` lists the bookings.
+The host panel needs a host's token for that tenant (or the superadmin's): `GET /api/v1/tenants/adriatic/host/listings?q=split` searches the listings, `PATCH /api/v1/tenants/adriatic/host/listings/:id` edits one, `POST /api/v1/tenants/adriatic/host/listings/:id/blocked-days` with `{ "from", "to" }` blocks the days of `[from, to)` and `GET /api/v1/tenants/adriatic/host/bookings?status=confirmed` lists the bookings.
 
 The admin panel needs the superadmin's token: `POST /api/v1/admin/tenants` with `{ "slug", "name" }` (and optionally `logoUrl`, `primaryColor`, `contactEmail`) creates a tenant whose portal works at once, `PATCH /api/v1/admin/tenants/:tenantId` changes the fields it is sent, and `POST /api/v1/admin/tenants/:tenantId/hosts` with `{ "email", "name", "password" }` adds a host — an existing account keeps its password (`accountCreated: false`).
 

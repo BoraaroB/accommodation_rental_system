@@ -23,7 +23,7 @@ const centsSchema = emptyAsUnset(
 
 /**
  * The portal's listing filters, sort and page: the URL search parameters of
- * the web app and the query of `GET /t/:tenantSlug/listings` (D-017).
+ * the web app and the query of `GET /tenants/:tenantSlug/listings` (D-017).
  * `from` (arrival, inclusive) and `to` (departure, exclusive) come together.
  */
 export const listingQuerySchema = paginationQuerySchema
@@ -52,7 +52,7 @@ export const listingQuerySchema = paginationQuerySchema
     }
   });
 
-/** The range of `GET /t/:tenantSlug/listings/:id/availability`: `[from, to)`, from today on. */
+/** The range of `GET /tenants/:tenantSlug/listings/:id/availability`: `[from, to)`, from today on. */
 export const availabilityQuerySchema = upcomingDateRangeSchema;
 
 /**

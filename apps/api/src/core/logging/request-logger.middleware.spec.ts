@@ -13,7 +13,7 @@ function finishRequest(
   const middleware = new RequestLoggerMiddleware();
   const req = {
     method: 'GET',
-    originalUrl: '/api/v1/t/adriatic/listings?page=2',
+    originalUrl: '/api/v1/tenants/adriatic/listings?page=2',
     headers: { authorization: 'Bearer secret-token' },
     user,
   } as unknown as Request;
@@ -55,7 +55,9 @@ describe('RequestLoggerMiddleware', () => {
       Record<string, unknown>,
     ];
     expect(line).toMatch(
-      new RegExp(`^GET /api/v1/t/adriatic/listings ${statusCode} \\d+ms$`),
+      new RegExp(
+        `^GET /api/v1/tenants/adriatic/listings ${statusCode} \\d+ms$`,
+      ),
     );
     expect(params).toEqual({ requestId: 'req-7' });
   });
@@ -69,7 +71,7 @@ describe('RequestLoggerMiddleware', () => {
 
     expect(spy).toHaveBeenCalledWith(
       expect.stringMatching(
-        /^GET \/api\/v1\/t\/adriatic\/listings aborted by the client \d+ms$/,
+        /^GET \/api\/v1\/tenants\/adriatic\/listings aborted by the client \d+ms$/,
       ),
       { requestId: 'req-7' },
     );

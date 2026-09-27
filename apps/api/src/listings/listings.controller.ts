@@ -18,7 +18,7 @@ import { ListingsService } from './listings.service.js';
 /** The public portal's listings: anyone may read them without signing in. */
 @Public()
 @UseGuards(TenantGuard)
-@Controller('t/:tenantSlug')
+@Controller('tenants/:tenantSlug')
 export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
 

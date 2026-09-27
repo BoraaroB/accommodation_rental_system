@@ -7,7 +7,7 @@ import { stubApi } from '../test/apiStub';
 import { aListing, aPage, aTenant } from '../test/fixtures';
 import { renderRoute } from '../test/renderRoute';
 
-const LISTINGS = '/t/adriatic/listings';
+const LISTINGS = '/tenants/adriatic/listings';
 
 type User = ReturnType<typeof userEvent.setup>;
 
@@ -15,8 +15,8 @@ function stubPortal(
   listings: (url: URL) => unknown = () => aPage([aListing()]),
 ) {
   return stubApi({
-    'GET /t/adriatic': aTenant(),
-    'GET /t/adriatic/cities': ['Split', 'Zadar'],
+    'GET /tenants/adriatic': aTenant(),
+    'GET /tenants/adriatic/cities': ['Split', 'Zadar'],
     [`GET ${LISTINGS}`]: listings,
   });
 }
@@ -273,7 +273,9 @@ describe('PortalHomePage', () => {
   it('keeps a city from the URL selected even when the portal has no such city', async () => {
     const api = stubPortal();
     renderRoute('/adriatic?city=Rijeka');
-    await waitFor(() => expect(api.requestCount('/t/adriatic/cities')).toBe(1));
+    await waitFor(() =>
+      expect(api.requestCount('/tenants/adriatic/cities')).toBe(1),
+    );
 
     expect(screen.getByLabelText('City')).toHaveValue('Rijeka');
   });

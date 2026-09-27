@@ -187,9 +187,9 @@ describe('Public portal (e2e)', () => {
     });
   });
 
-  describe('GET /t/:tenantSlug', () => {
+  describe('GET /tenants/:tenantSlug', () => {
     it("returns the portal's configuration", async () => {
-      const res = await get(`/api/v1/t/${slugA}`).expect(200);
+      const res = await get(`/api/v1/tenants/${slugA}`).expect(200);
       expect(res.body).toEqual(tenantA);
     });
 
@@ -197,25 +197,28 @@ describe('Public portal (e2e)', () => {
       ['an unknown tenant', `nowhere-${run}`],
       ['a value that is not a slug', 'a%00b'],
     ])('answers %s with 404', async (_case, slug) => {
-      const res = await get(`/api/v1/t/${slug}`).expect(404);
+      const res = await get(`/api/v1/tenants/${slug}`).expect(404);
       expectApiError(res, 404, 'TENANT_NOT_FOUND');
     });
   });
 
-  describe('GET /t/:tenantSlug/cities', () => {
+  describe('GET /tenants/:tenantSlug/cities', () => {
     it("lists only the tenant's cities, once each", async () => {
-      const res = await get(`/api/v1/t/${slugA}/cities`).expect(200);
+      const res = await get(`/api/v1/tenants/${slugA}/cities`).expect(200);
       expect(res.body).toEqual(['Belgrade', 'Split']);
     });
 
     it('answers an unknown tenant with 404', async () => {
-      const res = await get(`/api/v1/t/nowhere-${run}/cities`).expect(404);
+      const res = await get(`/api/v1/tenants/nowhere-${run}/cities`).expect(
+        404,
+      );
       expectApiError(res, 404, 'TENANT_NOT_FOUND');
     });
   });
 
-  describe('GET /t/:tenantSlug/listings', () => {
-    const list = (query = '') => get(`/api/v1/t/${slugA}/listings${query}`);
+  describe('GET /tenants/:tenantSlug/listings', () => {
+    const list = (query = '') =>
+      get(`/api/v1/tenants/${slugA}/listings${query}`);
 
     it("returns only the tenant's listings, newest first, as ListingDto", async () => {
       const res = await list().expect(200);
@@ -273,7 +276,8 @@ describe('Public portal (e2e)', () => {
     it('pages through ties in id order without gaps or repeats', async () => {
       const pageOf = async (query: string) =>
         listingPageSchema.parse(
-          (await get(`/api/v1/t/${slugP}/listings${query}`).expect(200)).body,
+          (await get(`/api/v1/tenants/${slugP}/listings${query}`).expect(200))
+            .body,
         );
 
       const first = await pageOf('?page=1');
@@ -301,14 +305,18 @@ describe('Public portal (e2e)', () => {
     });
 
     it('answers an unknown tenant with 404', async () => {
-      const res = await get(`/api/v1/t/nowhere-${run}/listings`).expect(404);
+      const res = await get(`/api/v1/tenants/nowhere-${run}/listings`).expect(
+        404,
+      );
       expectApiError(res, 404, 'TENANT_NOT_FOUND');
     });
   });
 
-  describe('GET /t/:tenantSlug/listings/:id', () => {
+  describe('GET /tenants/:tenantSlug/listings/:id', () => {
     it('returns the listing as ListingDto', async () => {
-      const res = await get(`/api/v1/t/${slugA}/listings/${L1.id}`).expect(200);
+      const res = await get(
+        `/api/v1/tenants/${slugA}/listings/${L1.id}`,
+      ).expect(200);
       expect(res.body).toEqual(L1);
     });
 
@@ -316,19 +324,23 @@ describe('Public portal (e2e)', () => {
       ["another tenant's listing", slugB, () => L1.id],
       ['an id that does not exist', slugA, () => randomUUID()],
     ])('answers %s with 404', async (_case, slug, id) => {
-      const res = await get(`/api/v1/t/${slug}/listings/${id()}`).expect(404);
+      const res = await get(`/api/v1/tenants/${slug}/listings/${id()}`).expect(
+        404,
+      );
       expectApiError(res, 404, 'LISTING_NOT_FOUND');
     });
 
     it('rejects an id that is not a uuid with 400', async () => {
-      const res = await get(`/api/v1/t/${slugA}/listings/abc`).expect(400);
+      const res = await get(`/api/v1/tenants/${slugA}/listings/abc`).expect(
+        400,
+      );
       expectApiError(res, 400, 'BAD_REQUEST');
     });
   });
 
-  describe('GET /t/:tenantSlug/listings/:id/availability', () => {
+  describe('GET /tenants/:tenantSlug/listings/:id/availability', () => {
     const availability = (slug: string, id: string, query: string) =>
-      get(`/api/v1/t/${slug}/listings/${id}/availability${query}`);
+      get(`/api/v1/tenants/${slug}/listings/${id}/availability${query}`);
 
     it.each([
       ['every night of a stay, not its checkout day', L1, 9, 15, [10, 11, 12]],

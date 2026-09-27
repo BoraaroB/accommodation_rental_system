@@ -10,7 +10,7 @@ function createFilter(headersSent = false) {
     reply: vi.fn(),
     end: vi.fn(),
     isHeadersSent: () => headersSent,
-    getRequestUrl: () => '/api/v1/t/adriatic/listings?city=Split',
+    getRequestUrl: () => '/api/v1/tenants/adriatic/listings?city=Split',
   };
   const httpAdapterHost = { httpAdapter } as unknown as HttpAdapterHost;
   return { httpAdapter, httpAdapterHost };
@@ -68,12 +68,12 @@ describe('AllExceptionsFilter', () => {
       error: 'Internal Server Error',
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Internal server error',
-      path: '/api/v1/t/adriatic/listings',
+      path: '/api/v1/tenants/adriatic/listings',
       requestId: 'req-9',
     });
     expect(JSON.stringify(body)).not.toContain('ECONNREFUSED');
     expect(logError).toHaveBeenCalledWith(
-      'Unhandled error on /api/v1/t/adriatic/listings',
+      'Unhandled error on /api/v1/tenants/adriatic/listings',
       { requestId: 'req-9' },
       error.stack,
     );

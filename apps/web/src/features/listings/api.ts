@@ -33,19 +33,19 @@ const listingArgsSchema = z.object({
   id: listingIdSchema,
 });
 
-/** The public portal's listings (`/t/:tenantSlug/...`). */
+/** The public portal's listings (`/tenants/:tenantSlug/...`). */
 export const listingsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     /** The tenant's cities, the options of the city filter. */
     getCities: build.query<string[], string>({
-      query: (tenantSlug) => `/t/${tenantSlug}/cities`,
+      query: (tenantSlug) => `/tenants/${tenantSlug}/cities`,
       argSchema: tenantSlugSchema,
       responseSchema: z.array(z.string()),
     }),
     /** One page of listings; the query is the URL's filters (D-017). */
     getListings: build.query<Page<ListingDto>, ListingsArgs>({
       query: ({ tenantSlug, query }) => ({
-        url: `/t/${tenantSlug}/listings`,
+        url: `/tenants/${tenantSlug}/listings`,
         // `undefined` values are left out of the query string.
         params: query,
       }),
@@ -55,14 +55,14 @@ export const listingsApi = baseApi.injectEndpoints({
       responseSchema: listingPageSchema,
     }),
     getListing: build.query<ListingDto, ListingArgs>({
-      query: ({ tenantSlug, id }) => `/t/${tenantSlug}/listings/${id}`,
+      query: ({ tenantSlug, id }) => `/tenants/${tenantSlug}/listings/${id}`,
       argSchema: listingArgsSchema,
       responseSchema: listingDtoSchema,
     }),
     /** The days of `[from, to)` on which the listing is taken (D-046). */
     getAvailability: build.query<ListingAvailability, AvailabilityArgs>({
       query: ({ tenantSlug, id, range }) => ({
-        url: `/t/${tenantSlug}/listings/${id}/availability`,
+        url: `/tenants/${tenantSlug}/listings/${id}/availability`,
         params: range,
       }),
       argSchema: listingArgsSchema.extend({ range: availabilityQuerySchema }),

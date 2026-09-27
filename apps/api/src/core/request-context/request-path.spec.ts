@@ -3,10 +3,10 @@ import { pathOf } from './request-path.js';
 
 describe('pathOf', () => {
   it.each([
-    ['/api/v1/t/adriatic/listings', '/api/v1/t/adriatic/listings'],
+    ['/api/v1/tenants/adriatic/listings', '/api/v1/tenants/adriatic/listings'],
     [
-      '/api/v1/t/adriatic/listings?city=Split&page=2',
-      '/api/v1/t/adriatic/listings',
+      '/api/v1/tenants/adriatic/listings?city=Split&page=2',
+      '/api/v1/tenants/adriatic/listings',
     ],
     ['/api/nope?token=abc', '/api/nope'],
     ['/api?', '/api'],

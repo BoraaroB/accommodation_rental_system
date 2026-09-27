@@ -128,7 +128,7 @@ describe('Host panel (e2e)', () => {
     return body === undefined ? req : req.send(body);
   }
 
-  const host = (slug: string) => `/t/${slug}/host`;
+  const host = (slug: string) => `/tenants/${slug}/host`;
   const blockedDays = (slug: string, listingId: string) =>
     `${host(slug)}/listings/${listingId}/blocked-days`;
   const range = (from: string, to: string) => `?from=${from}&to=${to}`;
@@ -322,7 +322,7 @@ describe('Host panel (e2e)', () => {
     );
   });
 
-  describe('GET /t/:tenantSlug/host/listings', () => {
+  describe('GET /tenants/:tenantSlug/host/listings', () => {
     const idsOf = (res: Response) =>
       listingPageSchema.parse(res.body).items.map((item) => item.id);
 
@@ -351,7 +351,7 @@ describe('Host panel (e2e)', () => {
     });
   });
 
-  describe('GET and PATCH /t/:tenantSlug/host/listings/:id', () => {
+  describe('GET and PATCH /tenants/:tenantSlug/host/listings/:id', () => {
     it('returns the listing', async () => {
       const res = await call(
         'get',
@@ -378,9 +378,10 @@ describe('Host panel (e2e)', () => {
 
       const updated = { ...L3, ...edit };
       expect(listingDtoSchema.parse(res.body)).toEqual(updated);
-      const portal = await call('get', `/t/${slugA}/listings/${L3.id}`).expect(
-        200,
-      );
+      const portal = await call(
+        'get',
+        `/tenants/${slugA}/listings/${L3.id}`,
+      ).expect(200);
       expect(portal.body).toEqual(updated);
     });
 
@@ -439,7 +440,7 @@ describe('Host panel (e2e)', () => {
     });
   });
 
-  describe('/t/:tenantSlug/host/listings/:id/blocked-days', () => {
+  describe('/tenants/:tenantSlug/host/listings/:id/blocked-days', () => {
     const path = () => blockedDays(slugA, L1.id);
 
     it('blocks a day for the host, idempotently, and the portal shows it taken', async () => {
@@ -467,7 +468,7 @@ describe('Host panel (e2e)', () => {
       });
       const availability = await call(
         'get',
-        `/t/${slugA}/listings/${L1.id}/availability${range(day(29), day(32))}`,
+        `/tenants/${slugA}/listings/${L1.id}/availability${range(day(29), day(32))}`,
       ).expect(200);
       expect(
         listingAvailabilitySchema.parse(availability.body).unavailableDays,
@@ -538,7 +539,7 @@ describe('Host panel (e2e)', () => {
     );
   });
 
-  describe('GET /t/:tenantSlug/host/bookings', () => {
+  describe('GET /tenants/:tenantSlug/host/bookings', () => {
     const bookings = (query: string, as: UserName = 'hostA') =>
       call('get', `${host(slugA)}/bookings${query}`, as).expect(200);
     const idsOf = (res: Response) =>

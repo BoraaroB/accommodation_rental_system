@@ -25,7 +25,7 @@ import { ListingsService } from './listings.service.js';
 
 /** The host panel's listings: the tenant's table, one listing and its edit (D-005). */
 @UseGuards(TenantGuard, PermissionsGuard)
-@Controller('t/:tenantSlug/host/listings')
+@Controller('tenants/:tenantSlug/host/listings')
 export class HostListingsController {
   constructor(private readonly listings: ListingsService) {}
 
