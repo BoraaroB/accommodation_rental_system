@@ -1,10 +1,10 @@
 # Progress
 
 - **Last updated:** 2026-09-27
-- **Current feature:** none — feature 13 (web admin panel) is merged; feature 14 has not started
-- **Current step:** —
-- **Next step:** Feature 14 — Docker (`chore/docker`): restate the scope, verify the docs, show the design, then set it to `in progress` with its checklist and open `docs/features/14-docker.md`
-- **Blocked / waiting on:** the repository owner: the post-merge PR `docs/feature-13-merged` (these docs) merged into `main`, then the go-ahead for feature 14 and the branch `chore/docker` created from an up-to-date `main`
+- **Current feature:** 14 — Docker (`chore/docker`), see [features/14-docker.md](features/14-docker.md)
+- **Current step:** feature 14 done – awaiting commit (checks green, review findings fixed, stack verified on a clean copy)
+- **Next step:** after the merge: record the commit message and the PR in the feature log, status `PR merged`; then feature 15 (final documentation pass, `docs/final-pass`)
+- **Blocked / waiting on:** the repository owner: commit, PR and merge of `chore/docker`
 
 ## Rules
 
@@ -20,25 +20,34 @@
 
 Statuses: `not started` · `in progress` · `done – awaiting commit` · `committed` · `PR merged`
 
-| #   | Feature                  | Branch                   | Status      | PR  | Done       |
-| --- | ------------------------ | ------------------------ | ----------- | --- | ---------- |
-| 1   | Repo setup               | `chore/repo-setup`       | PR merged   | #1  | 2026-09-24 |
-| 2   | API bootstrap            | `feat/api-bootstrap`     | PR merged   | #3  | 2026-09-24 |
-| 3   | Database schema          | `feat/db-schema`         | PR merged   | #5  | 2026-09-24 |
-| 4   | Database seed            | `feat/db-seed`           | PR merged   | #7  | 2026-09-24 |
-| 5   | API auth                 | `feat/api-auth`          | PR merged   | #9  | 2026-09-25 |
-| 6   | API portal (public)      | `feat/api-portal`        | PR merged   | #11 | 2026-09-25 |
-| 7   | API host panel           | `feat/api-host`          | PR merged   | #13 | 2026-09-25 |
-| 8   | API admin panel          | `feat/api-admin`         | PR merged   | #15 | 2026-09-25 |
-| 9   | Web bootstrap            | `feat/web-bootstrap`     | PR merged   | #17 | 2026-09-26 |
-| 10  | Web portal               | `feat/web-portal`        | PR merged   | #19 | 2026-09-27 |
-| 10a | Tenant route prefix      | `refactor/tenant-routes` | PR merged   | #21 | 2026-09-27 |
-| 11  | Web auth                 | `feat/web-auth`          | PR merged   | #23 | 2026-09-27 |
-| 12  | Web host panel           | `feat/web-host`          | PR merged   | #25 | 2026-09-27 |
-| 13  | Web admin panel          | `feat/web-admin`         | PR merged   | #27 | 2026-09-27 |
-| 14  | Docker                   | `chore/docker`           | not started |     |            |
-| 15  | Final documentation pass | `docs/final-pass`        | not started |     |            |
+| #   | Feature                  | Branch                   | Status                 | PR  | Done       |
+| --- | ------------------------ | ------------------------ | ---------------------- | --- | ---------- |
+| 1   | Repo setup               | `chore/repo-setup`       | PR merged              | #1  | 2026-09-24 |
+| 2   | API bootstrap            | `feat/api-bootstrap`     | PR merged              | #3  | 2026-09-24 |
+| 3   | Database schema          | `feat/db-schema`         | PR merged              | #5  | 2026-09-24 |
+| 4   | Database seed            | `feat/db-seed`           | PR merged              | #7  | 2026-09-24 |
+| 5   | API auth                 | `feat/api-auth`          | PR merged              | #9  | 2026-09-25 |
+| 6   | API portal (public)      | `feat/api-portal`        | PR merged              | #11 | 2026-09-25 |
+| 7   | API host panel           | `feat/api-host`          | PR merged              | #13 | 2026-09-25 |
+| 8   | API admin panel          | `feat/api-admin`         | PR merged              | #15 | 2026-09-25 |
+| 9   | Web bootstrap            | `feat/web-bootstrap`     | PR merged              | #17 | 2026-09-26 |
+| 10  | Web portal               | `feat/web-portal`        | PR merged              | #19 | 2026-09-27 |
+| 10a | Tenant route prefix      | `refactor/tenant-routes` | PR merged              | #21 | 2026-09-27 |
+| 11  | Web auth                 | `feat/web-auth`          | PR merged              | #23 | 2026-09-27 |
+| 12  | Web host panel           | `feat/web-host`          | PR merged              | #25 | 2026-09-27 |
+| 13  | Web admin panel          | `feat/web-admin`         | PR merged              | #27 | 2026-09-27 |
+| 14  | Docker                   | `chore/docker`           | done – awaiting commit |     |            |
+| 15  | Final documentation pass | `docs/final-pass`        | not started            |     |            |
 
 ## Current feature checklist
 
-No feature in progress. The checklist of the next feature is added when it starts; the history of finished features is in [features/](features/).
+Feature 14 — Docker:
+
+- [x] Scope restated, docs verified, design approved by the repository owner
+- [x] `.dockerignore`; API image with the targets `migrate` (migrations + seed) and `runtime` (production dependencies only)
+- [x] Web image (Vite build → nginx) and the nginx template
+- [x] `docker-compose.yml` (`db`, `migrate`, `api`, `web`) and the root `.env.example`
+- [x] Verified on a clean copy: build, start order, health, nginx routes, seed counts, a second start
+- [x] `README.md`, `architecture.md`, `decisions.md`
+- [x] `/check`, `reviewer`
+- [x] Feature log finished; status `done – awaiting commit`; commit proposal

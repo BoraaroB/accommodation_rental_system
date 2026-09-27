@@ -162,7 +162,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-022: Configuration comes only from validated env
 
-- **Status:** Implemented for the API (feature 2) and the web app (feature 9); Docker follows in feature 14
+- **Status:** Implemented for the API (feature 2), the web app (feature 9) and Docker (feature 14)
 - **Decision:** No URLs, hosts, ports, origins or secrets in code. Each app reads its environment in one module, validates it with zod at startup and fails fast with a clear error. `.env.example` files are committed without secrets; `.env*` is ignored by git.
 - **Consequences:** The same build runs locally and in Docker with different `.env` files.
 
@@ -199,7 +199,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-027: .env.example files are created with the feature that needs them
 
-- **Status:** Implemented for the API (feature 2) and the web app (feature 9); the root file grows in feature 14
+- **Status:** Implemented (features 2, 9 and 14)
 - **Context:** Feature 1 creates no application that reads environment variables.
 - **Decision:** Feature 1 only adds the ignore rules (`.env*` ignored, `.env.example` allowed). `apps/api/.env.example` is created in feature 2, `apps/web/.env.example` in feature 9, and the root (Docker) `.env.example` in features 2 and 14.
 - **Consequences:** Every variable appears together with the schema that validates it; no dead configuration.
@@ -295,7 +295,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Status:** Implemented (feature 3)
 - **Context:** With the pg driver adapter, `$connect()` only creates a connection pool, so a stopped database would surface as a 500 on the first request.
 - **Decision:** `PrismaService` runs `SELECT 1` at startup, retrying up to 10 times, 1 s apart, and logs each failed attempt as a warning with the driver's error code (e.g. `ECONNREFUSED`), never the URL. If the database stays unreachable, the start fails with a `fatal` log and exit code 1. The connection is closed in `onApplicationShutdown`, after the HTTP server has stopped.
-- **Consequences:** The API survives a database that starts a few seconds later (local development, a container restart) and fails clearly otherwise. In Docker (feature 14), Compose also starts the API only when the database is healthy.
+- **Consequences:** The API survives a database that starts a few seconds later (local development, a container restart) and fails clearly otherwise. In Docker (feature 14), the API starts only after the `migrate` job, which waits for a healthy database ([D-071](#d-071-docker-compose-runs-the-stack-with-migrations-as-a-one-off-job)).
 
 ## D-039: Prisma errors reach clients as fixed messages and the logs without row data
 
@@ -313,7 +313,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - Every row is mapped and validated before the first write; unknown countries and `guests > maxGuests` stop the seed there.
   - All writes run in one transaction with `createMany({ skipDuplicates: true })`, so a repeated run inserts only what is missing and never overwrites or deletes (a host's edits survive). Because `ON CONFLICT DO NOTHING` also skips rows that break the exclusion constraint, the seed counts each booking batch after inserting it and aborts when a booking is missing.
   - Passwords are hashed with bcrypt (cost 12, a salt per account), added in this feature instead of feature 5.
-- **Consequences:** `npm run db:seed` is safe to run at any time, including on every container start (feature 14). A changed demo password does not reach existing accounts. The Docker image needs `tsx` and the seed sources, or a compiled seed.
+- **Consequences:** `npm run db:seed` can run at any time without overwriting anything, and it runs on every `docker compose up` (the `migrate` job, [D-071](#d-071-docker-compose-runs-the-stack-with-migrations-as-a-one-off-job)), where it also brings back seeded rows deleted since. A changed demo password does not reach existing accounts. The image target that seeds keeps `tsx` and the seed sources; the API's runtime image has neither.
 
 ## D-041: Permission checks are bound per controller and fail closed
 
@@ -332,7 +332,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Status:** Implemented (feature 5)
 - **Context:** "Keep auth simple — we are not asking for SSO, 2FA or refresh-token rotation."
 - **Decision:**
-  - One access token: a JWT signed with HS256 (verification accepts HS256 only), claims `sub` and `email`, lifetime `JWT_EXPIRES_IN` in seconds. `JWT_SECRET` must have at least 32 characters; the placeholder in `.env.example` is shorter on purpose, so a copied example does not start. No refresh tokens or revocation: a token is valid until it expires, but roles and a deleted user are checked on every request.
+  - One access token: a JWT signed with HS256 (verification accepts HS256 only), claims `sub` and `email`, lifetime `JWT_EXPIRES_IN` in seconds. `JWT_SECRET` must have at least 32 characters; the placeholder in `.env.example` is shorter on purpose, so a copied example does not start. _Note (feature 14):_ the root (Docker) `.env.example` holds a long, local-only secret instead ([D-072](#d-072-the-root-envexample-holds-a-local-only-jwt-secret)). No refresh tokens or revocation: a token is valid until it expires, but roles and a deleted user are checked on every request.
   - Passwords: bcrypt (cost 12) behind a `PasswordHasher` contract; the seed uses the same `BcryptPasswordHasher`. A password has 8 characters to 72 bytes, the most bcrypt hashes.
   - E-mails are trimmed and lowercased by the shared `emailSchema` on the way in (D-003).
   - `POST /auth/register` returns `201` with the new client's profile and no token; the client then signs in with `POST /auth/login`. An e-mail in use is 409 `EMAIL_TAKEN`.
@@ -591,3 +591,22 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** A tenant's name, slug and branding are also served by the public `GET /tenants` (the landing page) and `GET /tenants/:tenantSlug` (a portal's header and colour). The host panel's tags ([D-067](#d-067-the-hosts-changes-make-cached-responses-stale-through-tags)) do not cover tenants.
 - **Decision:** `baseApi` adds the tags `Tenant` and `Host`. `Tenant` has no id: the admin list and tenant and both public tenant queries provide it, and creating, editing or deleting a tenant invalidates it. `Host` is by tenant id: the hosts list provides it, adding and removing a host invalidate it. A deletion that answers 404 (the tenant or membership was already gone) also invalidates, since the list still showing it is out of date; any other failed request invalidates nothing.
 - **Consequences:** After an edit the landing page and the portal show the new name and colour at once in the same browser, even from a cached response (checked in the manual scenario). One tag for every tenant refetches all tenant responses on screen after any change, which is a handful of small requests.
+
+## D-071: Docker Compose runs the stack, with migrations as a one-off job
+
+- **Status:** Implemented (feature 14) — approved by the repository owner in the design; replaces the plan's "`migrate deploy` → seed → start" in the API container
+- **Context:** Feature 14 is done when `cp .env.example .env && docker compose up --build` works on a clean clone. The plan ran the migrations, the seed and the API in one container command. The Prisma CLI and `tsx`, which the migrations and the seed need, are dev dependencies.
+- **Decision:**
+  - Four services, started in order through `depends_on`: `db` (`postgres:18`) healthy → `migrate` completed successfully → `api` healthy → `web`.
+  - `apps/api/Dockerfile` has two targets on one build stage. `migrate` keeps every dependency and runs `prisma migrate deploy`, then `prisma db seed`, then exits; it runs under an init process (`init: true`), so it stops on SIGTERM. `runtime` installs `npm ci --omit=dev --omit=optional`, copies only `dist/`, runs as the `node` user and starts `node dist/main.js` as PID 1. `--omit=optional` is needed because `@prisma/client` names the Prisma CLI as an optional peer, which npm keeps otherwise; the API uses no optional dependency.
+  - `apps/web/Dockerfile` builds the app with Node (`VITE_API_BASE_URL` is a required build argument) and serves `dist/` from `nginx:1.30-alpine`. The template `docker/web/default.conf.template` answers client-side routes with `index.html` and proxies `/api/` to `API_UPSTREAM` with the path unchanged, so the browser calls the API on its own origin.
+  - Both images build from the repository root (one lockfile). `.dockerignore` keeps installed dependencies, build output, `.env` files, `.git` and `docs/` out of the context. Dependencies install in their own layer from the manifests: `npm ci --ignore-scripts`, because the root `prepare` builds sources not copied yet, then `npm rebuild` for the packages' own install scripts.
+  - Compose reads every value from the root `.env` with `${VAR:?}` and builds `DATABASE_URL` from the `POSTGRES_*` values and the `db` service. `LOG_FORMAT=json` is set in Compose, `NODE_ENV=production` in the image. Every port is published on `127.0.0.1`. The API's healthcheck calls `/api/health` with Node's `fetch` (the slim image has no curl): every 2 s while starting, then every 30 s (`start_interval` needs Docker Engine 25). nginx resolves `api` only at startup, so `web` depends on `api` with `restart: true`: Compose restarts it after recreating the API.
+- **Consequences:** The migrations and the seed run once per `up`, however many API containers there are, and a failed migration keeps the API from starting (the error is in `docker compose logs migrate`). The seed runs on every `up` and inserts only missing rows ([D-040](#d-040-the-seed-is-a-standalone-script-that-only-inserts-missing-rows)), so a seeded tenant deleted in the admin panel comes back with its data, a removed seeded host gets the membership back, and a seeded tenant whose slug was changed gets an empty twin with the old slug; `docker compose down -v` starts again from the CSV. The runtime image (about 350 MB) carries no Prisma CLI, `tsx` or TypeScript; the `migrate` target is larger. Compose checks every variable even for `docker compose up -d db`, so a root `.env` copied before feature 14 needs the new variables. Outside the plan: seeding only an empty database, image digests, a non-root nginx, cache and security headers in nginx, TLS.
+
+## D-072: The root .env.example holds a local-only JWT secret
+
+- **Status:** Implemented (feature 14) — approved by the repository owner in the design; an exception to [D-042](#d-042-access-tokens-registration-and-sign-in)'s short placeholder
+- **Context:** D-042 keeps the `JWT_SECRET` placeholder too short, so a copied example does not start the API. Feature 14's done criterion is that a copied root example starts the stack.
+- **Decision:** The root `.env.example` has a 44-character `JWT_SECRET` whose value and comment say it is for running locally only. `apps/api/.env.example` keeps the short placeholder.
+- **Consequences:** `cp .env.example .env && docker compose up --build` works on a clean clone. The secret is public, so anyone who has read the repository can sign tokens for a stack that uses it; outside a local machine it must be replaced (the comment and the README say so).

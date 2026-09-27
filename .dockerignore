@@ -1,0 +1,14 @@
+# The images are built from the repository root (npm workspaces share one
+# lockfile). Only sources go into the build context: no installed dependencies,
+# build output, environment files or repository metadata.
+**/node_modules
+**/dist
+**/coverage
+**/*.tsbuildinfo
+**/*.log
+**/.DS_Store
+**/.env*
+apps/api/src/generated
+.git
+.claude
+docs
