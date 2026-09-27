@@ -1,7 +1,7 @@
 # Feature 12 — Web host panel
 
 - **Branch:** `feat/web-host`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #25, 2026-09-27
 
 ## Goal and scope
 
@@ -112,3 +112,17 @@ Manual scenario (current API and web dev server, headless Chrome driven through 
 - Let the portal's search and price forms follow the URL without remounting, as the host filters do, so the focus stays (comment in `pages/PortalHomePage.tsx`).
 
 ## Commit message
+
+One commit on `feat/web-host`, merged into `main` by merge commit `d3916b1` (PR #25).
+
+`b031e73`:
+
+```
+feat(web): add host panel for listings, day blocking and bookings
+
+- Listing table with search and an editor (price in euros, sent in cents)
+- Blocking calendar: booked vs blocked days, select a range to (un)block
+- Booking table filtered by listing, status and dates, with time badges
+- Filters in the URL; cache tags refresh the portal after host changes
+- Shared MoneyInput, FormAlert and useCalendarMonths; shadcn table
+```
