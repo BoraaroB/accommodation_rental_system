@@ -1,7 +1,7 @@
 # Feature 14 — Docker
 
 - **Branch:** `chore/docker`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #29, 2026-09-27
 
 ## Goal and scope
 
@@ -89,3 +89,19 @@ The stack, from a copy of the repository without ignored files (as a clean clone
 - Pin the base images by digest, kept up to date by a dependency bot (comments in both Dockerfiles).
 - Run nginx without root (the nginx-unprivileged image) (comment in `apps/web/Dockerfile`).
 - Long-lived cache headers for `/assets/` and a 404 for a missing asset, gzip, security headers such as a Content-Security-Policy, and TLS or a TLS-terminating proxy (comment in `docker/web/default.conf.template`).
+
+## Commit message
+
+One commit on `chore/docker`, merged into `main` by merge commit `1b5fe4a` (PR #29).
+
+`ecee9d4`:
+
+```
+chore(docker): run the whole stack with Docker Compose
+
+- API image: migrate target (migrations + seed), lean runtime target
+- Web image: Vite build served by nginx, /api proxied to the API
+- Compose: one-off migrate job, then api and web by health
+- Root .env.example covers the stack, with a local-only JWT secret
+- Docs: Run with Docker, architecture, D-071 and D-072
+```
