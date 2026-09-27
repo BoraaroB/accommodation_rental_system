@@ -23,7 +23,9 @@ export const baseApi = createApi({
   endpoints: () => ({}),
   // What the host's changes make stale: a listing (`id`) or the lists of
   // listings (`LIST`), a listing's availability, the bookings (`LIST`) (D-067).
-  tagTypes: ['Listing', 'Availability', 'Booking'],
+  // What the admin's changes make stale: every tenant response, public or
+  // admin, and a tenant's hosts (`id` = the tenant's id).
+  tagTypes: ['Listing', 'Availability', 'Booking', 'Tenant', 'Host'],
   // Endpoints declare `argSchema` / `responseSchema` from @ars/shared. They are
   // checked in development and tests and skipped in production (D-021).
   skipSchemaValidation: env.isProduction,

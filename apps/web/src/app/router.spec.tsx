@@ -1,7 +1,13 @@
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../test/apiStub';
-import { aListing, aPage, aTenant, aUser } from '../test/fixtures';
+import {
+  aListing,
+  anAdminTenant,
+  aPage,
+  aTenant,
+  aUser,
+} from '../test/fixtures';
 import { renderRoute } from '../test/renderRoute';
 import { RootErrorBoundary } from '../pages/errors/RootErrorBoundary';
 import { PortalLayout } from './layouts/PortalLayout';
@@ -52,12 +58,23 @@ describe('router', () => {
     );
   });
 
-  it('renders the admin layout on /admin, not a tenant portal', async () => {
-    stubApi({ 'GET /auth/me': aUser({ isSuperadmin: true }) });
-    renderRoute('/admin', { signedIn: true });
+  it('opens the admin panel on /admin on its tenants, not a tenant portal', async () => {
+    stubApi({
+      'GET /auth/me': aUser({ isSuperadmin: true }),
+      'GET /admin/tenants': [anAdminTenant()],
+    });
+    const { router } = renderRoute('/admin', { signedIn: true });
     expect(
-      await screen.findByRole('navigation', { name: 'Admin panel' }),
+      await screen.findByRole('heading', { name: 'Tenants' }),
     ).toBeInTheDocument();
+    expect(router.state.location.pathname).toBe('/admin/tenants');
+    expect(
+      screen.getByRole('navigation', { name: 'Admin panel' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'All portals' })).toHaveAttribute(
+      'href',
+      '/',
+    );
   });
 
   it.each(['/login', '/register'])(

@@ -3,6 +3,9 @@ import {
   RequireHost,
   RequireSuperadmin,
 } from '../features/auth/components/RequireRole';
+import { AdminNewTenantPage } from '../pages/AdminNewTenantPage';
+import { AdminTenantPage } from '../pages/AdminTenantPage';
+import { AdminTenantsPage } from '../pages/AdminTenantsPage';
 import { HostBookingsPage } from '../pages/HostBookingsPage';
 import { HostListingPage } from '../pages/HostListingPage';
 import { HostListingsPage } from '../pages/HostListingsPage';
@@ -31,7 +34,7 @@ export function contentBoundary(children: RouteObject[]): RouteObject {
 /**
  * Browser routes. One sign-in page serves every portal and both panels
  * (D-065); the host and admin panels check the role and send a signed-out
- * user to sign in. The admin feature adds its pages.
+ * user to sign in.
  */
 // Possible improvement (not in the plan): load the pages with the routes'
 // `lazy`, so the first visit downloads less (the build warns above 500 kB).
@@ -61,7 +64,16 @@ export const routes: RouteObject[] = [
           {
             path: 'admin',
             Component: AdminLayout,
-            children: [contentBoundary([])],
+            children: [
+              contentBoundary([
+                // The panel opens on the tenants (sign-in lands here).
+                { index: true, loader: () => redirect('tenants') },
+                { path: 'tenants', Component: AdminTenantsPage },
+                { path: 'tenants/new', Component: AdminNewTenantPage },
+                // By id, not slug: the slug is editable (D-051).
+                { path: 'tenants/:tenantId', Component: AdminTenantPage },
+              ]),
+            ],
           },
         ],
       },
