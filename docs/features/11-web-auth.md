@@ -1,7 +1,7 @@
 # Feature 11 — Web auth
 
 - **Branch:** `feat/web-auth`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #23, 2026-09-27
 
 ## Goal and scope
 
@@ -106,3 +106,19 @@ Manual scenario (current API and web dev server, headless Chrome driven through 
 - Follow the `storage` event, so a sign-in or sign-out in one tab applies to the other tabs (comment in `lib/tokenStorage.ts`).
 - Show the portal of `?redirect=` on the sign-in page ("Sign in to Adriatic Stays") in its branding (comment in `pages/LoginPage.tsx`).
 - Rate-limit sign-in and registration (already noted in the API's `AuthController`).
+
+## Commit message
+
+One commit on `feat/web-auth`, merged into `main` by merge commit `5d65aaf` (PR #23).
+
+`99aa831`:
+
+```
+feat(web): add sign-in, registration and role-protected routes
+
+- One global /login and /register; back to the page or by role (D-065)
+- Token-only auth slice kept in localStorage; a 401 signs out
+- RequireSuperadmin and RequireHost with a 403 page
+- Account menu in the site, portal and admin headers
+- redirectPathSchema in @ars/shared blocks open redirects
+```
