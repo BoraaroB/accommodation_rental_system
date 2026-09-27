@@ -1,7 +1,7 @@
 # Feature 13 — Web admin panel
 
 - **Branch:** `feat/web-admin`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #27, 2026-09-27
 
 ## Goal and scope
 
@@ -115,4 +115,16 @@ Manual scenario (current API and web dev server, headless Chrome driven through 
 
 ## Commit message
 
-Not committed yet.
+One commit on `feat/web-admin`, merged into `main` by merge commit `70c8318` (PR #27).
+
+`e8b5ebc`:
+
+```
+feat(web): add admin panel for tenants and their hosts
+
+- Tenant table; delete confirmed by typing the slug (shadcn alert-dialog)
+- One tenant form to create and edit; edits send only changed fields
+- Hosts section: add (existing accounts kept unchanged) and remove
+- Tenant changes refresh the landing page and portal branding (tags)
+- Admin header links to all portals
+```
