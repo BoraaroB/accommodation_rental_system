@@ -10,7 +10,22 @@ The stack is NestJS, React, PostgreSQL and Docker. The original task is in [docs
 
 - Node.js 24 (≥ 24.15) — `nvm use` picks the version from [.nvmrc](.nvmrc)
 - npm (bundled with Node.js)
-- Docker with Compose (for the database)
+- Docker Engine 25 or later with Docker Compose v2 (the database, or the whole stack)
+
+## Run with Docker
+
+The whole stack — PostgreSQL, the API and the web app — needs only Docker:
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Then open http://localhost:8080 (`WEB_PORT`) and sign in with a [demo account](#demo-accounts); the example's `SEED_DEMO_PASSWORD` is `change-me-demo`. The API also answers on http://localhost:3000/api/health (`API_PORT`).
+
+The services start in order: `db`, then `migrate` (applies the migrations, loads `data/*.csv` and exits), then `api` once `migrate` has succeeded, then `web` once the API is healthy — nginx serving the built app and forwarding `/api` to the API ([D-071](docs/decisions.md#d-071-docker-compose-runs-the-stack-with-migrations-as-a-one-off-job)). Every port is published on `127.0.0.1` only. If a port is taken, change it in `.env`: with `WEB_PORT` also `CORS_ORIGIN`, with `API_PORT` also `API_UPSTREAM`.
+
+The `JWT_SECRET` in `.env.example` is for running locally only; anywhere else set a random one, e.g. `openssl rand -base64 48` ([D-072](docs/decisions.md#d-072-the-root-envexample-holds-a-local-only-jwt-secret)). `migrate` runs on every `up` and the seed inserts only missing rows, so seeded tenants, listings or hosts deleted in the panels come back on the next `up`; `docker compose down -v` deletes the database and starts again from the CSV. `docker compose down` stops the stack and keeps the data.
 
 ## Getting started
 
@@ -23,14 +38,14 @@ npm test
 ### Database
 
 ```bash
-cp .env.example .env                      # Postgres credentials and host port for Docker Compose
+cp .env.example .env                      # Docker Compose settings, including the Postgres credentials and port
 docker compose up -d db                   # PostgreSQL 18 with the databases `booking` and `booking_test`
 cp apps/api/.env.example apps/api/.env    # API settings; DATABASE_URL matches the root example
 npm run db:migrate                        # create the tables (Prisma migrations)
 npm run db:seed                           # load data/*.csv: 3 tenants, 1,000 listings, 12,757 bookings
 ```
 
-`booking_test` is created by [docker/postgres/initdb](docker/postgres/initdb/) on the first start, when the data volume is empty.
+`booking_test` is created by [docker/postgres/initdb](docker/postgres/initdb/) on the first start, when the data volume is empty. Compose checks every variable of the root `.env`, also when it starts only `db`, so a root `.env` copied from an older example needs the new variables.
 
 The seed can be run again at any time: it only inserts rows that are missing and never overwrites or deletes data. Listings go to a tenant by country:
 
@@ -42,7 +57,7 @@ The seed can be run again at any time: it only inserts rows that are missing and
 
 ### Demo accounts
 
-Every seeded account signs in with the password set in `SEED_DEMO_PASSWORD` (`apps/api/.env`).
+Every seeded account signs in with the password set in `SEED_DEMO_PASSWORD` (`apps/api/.env`, or the root `.env` in Docker).
 
 | Role       | E-mail                                                                                                   |
 | ---------- | -------------------------------------------------------------------------------------------------------- |
@@ -117,9 +132,9 @@ apps/api          NestJS API
 apps/web          React web app
 packages/shared   @ars/shared — data contracts and shared utilities
 data/             listings.csv and bookings.csv, loaded into the database by the seed
-docker/           Docker support files (database init scripts)
+docker/           Docker support files (database init scripts, the nginx template)
 docs/             plan, architecture, decisions, progress and feature logs
-docker-compose.yml  local infrastructure (the database; the full stack in feature 14)
+docker-compose.yml  the whole stack: database, migration job, API and web app
 ```
 
 ## Documentation

@@ -16,7 +16,7 @@ flowchart LR
 - **`packages/shared`** (`@ars/shared`) — `contracts.ts` as delivered, zod schemas for API inputs and responses, and pure utilities (`today`, `addDays`, `eurosToCents`). Compiled to ESM in `dist/`. _Feature 1 (utilities), later features add schemas._
 - **`apps/api`** — NestJS 12 (ESM) with Prisma 7 on PostgreSQL 18. _Features 2–8._
 - **`apps/web`** — Vite 8, React 19, React Router 8, Tailwind 4, Redux Toolkit + RTK Query. _Features 9–13._
-- **Docker Compose** — Postgres, the API (migrate → seed → start) and nginx serving the web build and proxying `/api`. _Features 2 (database) and 14 (full stack)._
+- **Docker Compose** — Postgres, a one-off `migrate` job (migrations, then the seed), the API and nginx serving the web build and proxying `/api`. _Features 2 (database) and 14 (full stack); see [Docker](#docker)._
 
 ## Data flow: CSV → database → API → UI
 
@@ -252,4 +252,25 @@ Every environment-specific value comes from `.env`, validated at startup in one 
 
 - **API:** `ConfigModule` validates the env with the zod schema in `apps/api/src/core/config/env.schema.ts` and serves the parsed values through `ConfigService`. It loads `apps/api/.env`, or `apps/api/.env.test` when `NODE_ENV=test` (both Vitest configs set it); real environment variables win over the file. In test mode `DATABASE_URL` must name a database ending in `_test`. The Prisma CLI reads the same `apps/api/.env` through `prisma.config.ts` ([D-037](decisions.md#d-037-generating-the-prisma-client-needs-no-database)); at startup the API waits for the database ([D-038](decisions.md#d-038-the-api-waits-for-the-database-at-startup)). An invalid or missing variable stops the start: the error names every failing variable, is logged as `fatal`, and the process exits with code 1.
 - **Web:** `config/env.ts` validates `VITE_API_BASE_URL` (a path such as `/api/v1` behind the proxy, or a full URL) when the app loads. `vite.config.ts` validates the dev-server variables `WEB_PORT` and `API_PROXY_TARGET`; they have no `VITE_` prefix, so they never reach the bundle, and a production build does not need them.
-- **Docker Compose:** the root `.env` (from the root `.env.example`) holds the Postgres credentials, the test database name and the host port.
+- **Docker Compose:** the root `.env` (from the root `.env.example`) holds every value of the stack: the Postgres credentials, test database and port; the API's port, CORS origin, JWT settings, log level and seed password; the web app's port, `API_UPSTREAM` and `VITE_API_BASE_URL`. Compose stops with the variable's name when one is missing (`${VAR:?}`) and builds the API's `DATABASE_URL` from the `POSTGRES_*` values. The `JWT_SECRET` in the example is for local use only ([D-072](decisions.md#d-072-the-root-envexample-holds-a-local-only-jwt-secret)).
+
+## Docker
+
+`docker compose up --build` runs the stack from the root `.env` ([D-071](decisions.md#d-071-docker-compose-runs-the-stack-with-migrations-as-a-one-off-job)). Both images build from the repository root, where the lockfile of the workspaces is; `.dockerignore` keeps dependencies, build output and `.env` files out.
+
+```mermaid
+flowchart LR
+  DB[(db<br/>postgres:18)] -->|healthy| MIG[migrate<br/>migrate deploy, seed]
+  MIG -->|completed| API[api<br/>node dist/main.js]
+  API -->|healthy| WEB[web<br/>nginx]
+  WEB -->|/api/| API
+```
+
+| Service   | Image                                   | What it does                                                                                                                               |
+| --------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `db`      | `postgres:18`                           | The database and `booking_test` (`docker/postgres/initdb`); the data lives in the `db-data` volume.                                        |
+| `migrate` | `apps/api/Dockerfile`, target `migrate` | `prisma migrate deploy`, then the seed (`data/*.csv`), then it exits. Runs on every `up`; the seed brings back seeded rows deleted since.  |
+| `api`     | `apps/api/Dockerfile`, target `runtime` | The API with production dependencies only, as the `node` user; JSON logs; healthcheck on `/api/health`.                                    |
+| `web`     | `apps/web/Dockerfile`                   | Vite build (`VITE_API_BASE_URL` as a build argument) served by nginx; client-side routes get `index.html`, `/api/` goes to `API_UPSTREAM`. |
+
+Every port is published on `127.0.0.1`. The browser calls the API through nginx on the web app's origin, as it does through the Vite dev server in development.

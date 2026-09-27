@@ -1,0 +1,27 @@
+# The web app's site, rendered at startup by the nginx image: only variables set
+# in the environment are substituted (API_UPSTREAM), so nginx's own variables
+# such as $uri are left as they are.
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+
+    # The API, on the web app's origin (no CORS). Without a path in
+    # `proxy_pass` the request path goes on unchanged (/api/v1/...).
+    location /api/ {
+        proxy_pass ${API_UPSTREAM};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    # Client-side routes: a path that is not a file gets the app's index.html.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Possible improvement (not in the plan): long-lived cache headers for the
+    # hashed files in /assets/ (and a 404 instead of index.html for a missing
+    # one), gzip, security headers such as a Content-Security-Policy, and TLS
+    # (or a TLS-terminating proxy in front).
+}
