@@ -11,6 +11,7 @@ export {
   hostedTenantSchema,
   loginSchema,
   passwordSchema,
+  redirectPathSchema,
   registerSchema,
   userIdSchema,
   userNameSchema,

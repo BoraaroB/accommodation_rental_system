@@ -22,7 +22,7 @@ describe('PortalLayout', () => {
         contactEmail: 'contact@adriatic.example.com',
       }),
     });
-    const { unmount } = renderRoute('/adriatic', routes);
+    const { unmount } = renderRoute('/adriatic', { routes });
 
     const home = await screen.findByRole('link', { name: 'Adriatic Stays' });
     expect(home).toHaveAttribute('href', '/adriatic');
@@ -57,7 +57,7 @@ describe('PortalLayout', () => {
         apiErrorBody(404, 'TENANT_NOT_FOUND', 'Tenant not found'),
       ),
     });
-    renderRoute('/nowhere', routes);
+    renderRoute('/nowhere', { routes });
 
     expect(await screen.findByText('Portal not found')).toBeInTheDocument();
     expect(
@@ -67,7 +67,7 @@ describe('PortalLayout', () => {
   });
 
   it('shows "Portal not found" for an address that is not a slug, without asking the API', () => {
-    renderRoute('/Not_A_Slug', routes);
+    renderRoute('/Not_A_Slug', { routes });
     expect(screen.getByText('Portal not found')).toBeInTheDocument();
   });
 
@@ -78,7 +78,7 @@ describe('PortalLayout', () => {
         apiErrorBody(500, 'INTERNAL_ERROR', 'Internal server error'),
       ),
     });
-    renderRoute('/adriatic', routes);
+    renderRoute('/adriatic', { routes });
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Internal server error',

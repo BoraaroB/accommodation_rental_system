@@ -1,12 +1,25 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { env } from '../config/env';
+import { selectToken } from '../store/authSlice';
+import type { RootState } from '../store/store';
 
 /**
  * The one RTK Query API. Features add their endpoints with `injectEndpoints`.
  */
 export const baseApi = createApi({
   reducerPath: 'api',
-  baseQuery: fetchBaseQuery({ baseUrl: env.apiBaseUrl }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: env.apiBaseUrl,
+    // Only the identity travels with a request; the API computes the rights
+    // for every request (D-007).
+    prepareHeaders: (headers, { getState }) => {
+      const token = selectToken(getState() as RootState);
+      if (token !== null) {
+        headers.set('authorization', `Bearer ${token}`);
+      }
+      return headers;
+    },
+  }),
   endpoints: () => ({}),
   // Endpoints declare `argSchema` / `responseSchema` from @ars/shared. They are
   // checked in development and tests and skipped in production (D-021).

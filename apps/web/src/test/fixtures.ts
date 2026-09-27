@@ -1,4 +1,4 @@
-import type { ListingDto, Page, PublicTenant } from '@ars/shared';
+import type { ListingDto, Page, PublicTenant, UserProfile } from '@ars/shared';
 
 /** A portal as `GET /tenants/:tenantSlug` returns it. */
 export function aTenant(overrides: Partial<PublicTenant> = {}): PublicTenant {
@@ -41,3 +41,18 @@ export function aPage<T>(
 ): Page<T> {
   return { items, page: 1, pageSize: 24, total: items.length, ...overrides };
 }
+
+/** The signed-in user as `GET /auth/me` returns it: a client by default. */
+export function aUser(overrides: Partial<UserProfile> = {}): UserProfile {
+  return {
+    id: '5f0e8c2a-1b3d-4e6f-8a9b-0c1d2e3f4a5b',
+    email: 'ana@example.com',
+    name: 'Ana Client',
+    isSuperadmin: false,
+    hostOf: [],
+    ...overrides,
+  };
+}
+
+/** A token as the auth slice keeps it; the stubbed API does not check it. */
+export const TEST_TOKEN = 'test-token';

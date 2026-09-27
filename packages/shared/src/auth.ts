@@ -81,6 +81,18 @@ export const userProfileSchema = z.object({
   hostOf: z.array(hostedTenantSchema),
 });
 
+/**
+ * Where the web app goes after sign-in (`?redirect=`): a path inside the app
+ * only. `//evil.example` or `https://…` would leave the site (an open
+ * redirect); browsers read `\` as `/` and drop tabs and line breaks, so
+ * those are rejected too. The sign-in pages themselves are rejected, so a
+ * redirect cannot loop (in any letter case, as the router matches paths).
+ */
+export const redirectPathSchema = z
+  .string()
+  .regex(/^\/(?!\/)[^\s\\]*$/)
+  .refine((path) => !/^\/(login|register)(?:[/?#]|$)/i.test(path));
+
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type AccessToken = z.infer<typeof accessTokenSchema>;
