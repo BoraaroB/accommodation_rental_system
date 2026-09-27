@@ -32,6 +32,14 @@ export function eurosToCents(euros: number): number {
   return cents;
 }
 
+/** The euro amount of integer cents, for display and for a form's euro input. */
+export function centsToEuros(cents: number): number {
+  if (!Number.isSafeInteger(cents)) {
+    throw new RangeError(`Cents must be an integer, got ${cents}`);
+  }
+  return cents / 100;
+}
+
 /** The total of a stay `[checkIn, checkOut)`: its nights times the price per night, in cents. */
 export function stayTotalCents(
   checkIn: IsoDate,

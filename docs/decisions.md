@@ -85,10 +85,10 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-011: Money is integer cents end to end
 
-- **Status:** Implemented for the conversion helper (feature 1); the rest follows from features 3–13
+- **Status:** Implemented for the conversion helper (feature 1), the API (features 3–8) and the portal (feature 10); the host panel follows in feature 12
 - **Context:** `contracts.ts`: money is an integer in minor units; there are no floats on purpose.
 - **Decision:** Cents in the database (`Int`), the API, the URL filter parameters (`minPriceCents`, `maxPriceCents`) and all calculations. Euros exist only in form inputs and are converted once by `eurosToCents` in `@ars/shared`, which rejects amounts with more than two decimals (instead of rounding them silently — `1.005 * 100` is `100.49999…` in binary floating point), negative or non-finite amounts, and amounts too large for a safe integer.
-- **Consequences:** No floating-point money errors; one schema for the URL and the API. Stay totals are computed as `nights × pricePerNightCents` by `stayTotalCents` in `@ars/shared` (feature 7).
+- **Consequences:** No floating-point money errors; one schema for the URL and the API. Stay totals are computed as `nights × pricePerNightCents` by `stayTotalCents` in `@ars/shared` (feature 7). The web app shows cents through `centsToEuros` (feature 10), used only for display and to fill a euro input.
 
 ## D-012: Dates are ISO strings in UTC, with one today()
 
@@ -129,10 +129,11 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-017: Listing filters live in the URL
 
-- **Status:** Accepted — implemented in feature 10
+- **Status:** Implemented (feature 10)
 - **Context:** The portal filters by city, guests, price range and date range.
 - **Decision:** The URL search parameters are the only source of truth for filters; they are not duplicated in Redux or component state. The same `listingQuerySchema` validates them on the FE and the BE. Invalid parameters drop only themselves. "Apply" resets the page to 1.
 - **Consequences:** Shareable links, working refresh and back button, and natural RTK Query caching, because the query arguments are exactly the URL.
+- **Implementation (feature 10):** `parseListingFilters` checks each parameter on its own through `listingQuerySchema.shape`, then the whole schema; a failing range drops both dates, a maximum below the minimum drops the maximum. `toSearchParams` leaves out empty and default values (`sort=newest`, `page=1`). Two forms write the URL: the search bar (city, dates, guests) and the price filter (euros, converted with `eurosToCents`); both validate with `zodResolver(listingQuerySchema)`. `pageSize` is not a URL parameter.
 
 ## D-018: URI versioning under /api/v1
 
@@ -154,9 +155,10 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-021: One set of zod schemas for FE and BE
 
-- **Status:** Accepted — implemented in features 2–13
+- **Status:** Implemented for the API (features 2–8) and the portal (feature 10); features 11–13 follow
 - **Decision:** Input and response DTO schemas live in `packages/shared` and are used by the NestJS validation pipe, by react-hook-form resolvers and by RTK Query `argSchema` / `responseSchema`. RTK response validation runs in development and tests and is skipped in production (`skipSchemaValidation: import.meta.env.PROD`) for performance; `catchSchemaFailure` turns a mismatch into a normal error state.
 - **Consequences:** FE and BE validation cannot disagree; contract drift shows up during development.
+- **Exception (feature 10):** the listing list endpoint has no `argSchema`. RTK Query types `argSchema` as a schema whose input and output are the endpoint's argument, and `listingQuerySchema` coerces strings, so its input type differs from its output. The argument is already the output of `listingQuerySchema` (`useListingFilters`), so a second check would add nothing.
 
 ## D-022: Configuration comes only from validated env
 
@@ -166,21 +168,21 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-023: Null rating is shown as "New" and sorted last
 
-- **Status:** Implemented for the sort (feature 6); the "New" badge follows in feature 10
+- **Status:** Implemented (features 6 and 10)
 - **Context:** 109 listings have `rating: null` — "a real state in the data, not a gap in it".
 - **Decision:** The UI shows a "New" badge and no stars; sorting by rating puts nulls last. Ratings stay on the data's 5-point scale.
 - **Consequences:** Unreviewed listings are neither hidden nor ranked as zero.
 
 ## D-024: Placeholder images per property type
 
-- **Status:** Accepted — implemented in feature 10
+- **Status:** Implemented (feature 10)
 - **Context:** The data has no photos.
-- **Decision:** Result cards show a placeholder with an icon for the `propertyType`.
+- **Decision:** Result cards show a placeholder with an icon for the `propertyType`: a lucide-react icon (the UI kit's icon set, [D-062](#d-062-the-ui-kit-is-shadcnui-on-base-ui)) on a gradient of the primary colour.
 - **Consequences:** A usable, honest UI without fake photos.
 
 ## D-025: Booking-style layout, not branding
 
-- **Status:** Design tokens implemented (feature 9, [D-056](#d-056-colours-come-only-from-design-tokens)); the Booking-style pages follow in feature 10
+- **Status:** Implemented (features 9 and 10)
 - **Context:** "Feel free to take UI inspiration from Airbnb or Booking."
 - **Decision:** Booking.com's layout and UX patterns (search bar, filter sidebar/drawer, horizontal result cards, rating badge) — not its name, logo or colours. Colours come from design tokens and the tenant's primary colour; mobile-first.
 - **Consequences:** A familiar, usable layout; tenant branding is a runtime CSS variable.
@@ -451,10 +453,11 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-056: Colours come only from design tokens
 
-- **Status:** Implemented (feature 9)
+- **Status:** Implemented (feature 9); the tokens became the shadcn/ui theme in feature 10
 - **Context:** "UI uses design tokens only (no raw hex colours)"; a tenant's primary colour must override the brand colour at runtime.
 - **Decision:** `styles/tokens.css` defines the tokens in Tailwind's `@theme` (primary, on-primary, surface, surface-raised, text, muted, border, danger, success, two radii, the font) and removes Tailwind's default palette with `--color-*: initial`, so a raw colour utility such as `bg-blue-500` does not exist. Shades come from opacity modifiers (`bg-primary/90`), which Tailwind computes from the CSS variable. `@theme inline` is not used, so overriding `--color-primary` on a layout root recolours everything under it.
 - **Consequences:** Components cannot drift from the palette; tenant branding (feature 10) is one CSS variable.
+- **Changed in feature 10** ([D-062](#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the tokens follow the shadcn/ui theme — each colour is a variable on `:root` (`--background`, `--foreground`, `--card`, `--popover`, `--primary`, `--primary-foreground`, `--secondary`, `--muted`, `--muted-foreground`, `--accent`, `--destructive`, `--success`, `--border`, `--input`, `--ring`, `--radius`), in OKLCH, exposed to Tailwind by `@theme inline` (so `bg-primary` compiles to `var(--primary)`). The default palette is still removed, the one palette class the generated kit used (`bg-black/10`) became `bg-foreground/10`, and a tenant portal overrides `--primary` and `--ring` on the document (`useBrandColor`), so popups rendered into `<body>` follow it too. The kit's `dark:` classes apply only under a `.dark` ancestor, so the system's dark mode cannot half-apply them; there is no dark theme yet.
 
 ## D-057: Web tests run in jsdom with Testing Library
 
@@ -462,6 +465,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** Vitest `^4.1` is the test runner in every workspace (D-026); the web app needs a DOM.
 - **Decision:** `apps/web/vitest.config.ts` uses the React plugin, `environment: 'jsdom'` and a setup file that loads `@testing-library/jest-dom/vitest` and calls Testing Library's `cleanup` after each test (Vitest globals are off, so it cannot register itself). `test.env` sets `VITE_API_BASE_URL`, because Vitest serves `import.meta.env` from it, so tests need no `.env` file. The Vitest config does not reuse `vite.config.ts`, whose dev-server env is required only by the dev server. Tests render with a fresh store (`renderWithStore`) and routes with `createMemoryRouter`; failing requests are simulated through a thunk rejected with value, not a mocked `fetch`.
 - **Consequences:** Component, router and store tests run in about a second without a browser or a server.
+- **Changed in feature 10:** pages that load data are tested through a stubbed `fetch` ([D-059](#d-059-web-tests-stub-fetch-behind-an-absolute-test-api-url)).
 
 ## D-058: The web app is organised by feature, with conventional folder names
 
@@ -471,6 +475,47 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - `app/` — the router (`router.ts`) and the layouts;
   - `pages/` — route components (e.g. `NotFoundPage`, `pages/errors/` for the route error boundaries; feature pages from feature 10);
   - `features/<name>/` — one folder per domain (`listings`, `auth`, `host`, `admin`) with `api.ts` (injected endpoints), `components/` and `hooks/`;
-  - shared code in conventional folders: `components/` (`components/ui` is the UI kit), `hooks/` (hooks shared by several features; created with the first one), `store/` (store, slices, middleware and the typed `useAppDispatch` / `useAppSelector`, next to the store as in the Redux Toolkit docs), `api/` (`baseApi`, `errors`), `config/` (`env`), `lib/` (`logger`, `cx`), plus `styles/` and `test/`.
+  - shared code in conventional folders: `components/` (`components/ui` is the UI kit), `hooks/` (hooks shared by several features; created with the first one), `store/` (store, slices, middleware and the typed `useAppDispatch` / `useAppSelector`, next to the store as in the Redux Toolkit docs), `api/` (`baseApi`, `errors`), `config/` (`env`), `lib/` (`logger`, `utils`, `format`; `cx` until feature 10), plus `styles/` and `test/`.
   - Dependencies point one way: `app` → `pages` → `features` → shared folders; shared folders never import from `features/` or `pages/`.
 - **Consequences:** Familiar names; one feature still lives in one folder. The plan's paths map as `shared/ui` → `components/ui`, `shared/api` → `api`, `shared/config` → `config`, `shared/lib` → `lib`, `app/store.ts` → `store/store.ts`.
+
+## D-059: Web tests stub `fetch` behind an absolute test API URL
+
+- **Status:** Implemented (feature 10)
+- **Context:** Portal pages load data through RTK Query. Testing them should cover the whole chain (URL filters → request → response schema → UI) without a server or a new dependency. Node's `Request`, which `fetchBaseQuery` builds, rejects a relative URL such as `/api/v1/...`; this was checked in the test environment.
+- **Decision:** The Vitest config sets `VITE_API_BASE_URL` to `http://api.test/api/v1` (`.test` is a reserved top-level domain). `test/setup.ts` replaces `fetch` before every test; `stubApi({ 'GET /t/adriatic': body })` answers by method and path relative to the base URL, and a request no route answers fails the test when it ends. Tests read the query a page sent with `lastQuery(path)`.
+- **Consequences:** Page tests prove what the page asks the API for, including the URL's filters, and nothing can reach a network. jsdom lacks `window.scrollTo` (called by `ScrollRestoration`) and `matchMedia`, so the setup stubs the first and `useMediaQuery` treats the second as "not desktop" (one calendar month). The Base UI controls need no stand-ins: tests open selects, the city combobox, the date picker and the filter sheet by role and label.
+
+## D-060: The availability calendar shows a year ahead, one request per view
+
+- **Status:** Implemented (feature 10)
+- **Context:** Challenge item 4: "On a single listing — when that listing is available to book." The plan asks for "a calendar for the next few months", two months side by side on desktop and one on phones, with taken days struck through. The public availability endpoint answers for any range from today on (D-046).
+- **Decision:** `AvailabilityCalendar` (in the shared `components/`, because the host panel reuses it for blocking in feature 12) is presentational: it gets the first month, the navigation limits and `getDayStatus(day)`. It is the UI kit's Calendar (react-day-picker) without a selection mode: `modifiers` mark unavailable, past and loading days and the searched stay, `labelGridcell` gives each day its date and status for screen readers, and `timeZone="UTC"` keeps the grid on the same calendar days as the `IsoDate`s (D-012; checked with tests run in other time zones). The listing page moves it month by month from the current month to 11 months ahead and fetches two months, from today on, in one request — the two shown on desktop; on phones, which show one, the next month is already loaded. Days are past, available, unavailable or loading; the searched stay is highlighted. "Available for your dates" comes from a separate request for exactly `[from, to)`.
+- **Consequences:** Short requests and cached months when the visitor goes back; a stay searched further ahead than a year opens at the last month the calendar allows.
+
+## D-061: The filter drawer is the UI kit's Sheet
+
+- **Status:** Implemented (feature 10)
+- **Context:** On phones the price filter opens in a drawer, which must trap focus, close on Esc and keep the page behind it inert.
+- **Decision:** The drawer is the shadcn/ui `Sheet` ([D-062](#d-062-the-ui-kit-is-shadcnui-on-base-ui)), a Base UI `Dialog` sliding in from the right. Its open state lives in the `ui` slice, as the plan says: the "Filters" button opens it, and `onOpenChange` (Esc, the close button, a click on the backdrop, Apply) closes it. Its content mounts only while it is open, so the form starts from the URL every time. A first version used a native `<dialog>`; it was replaced with the UI kit.
+- **Consequences:** Base UI handles focus, Esc and the inert background; no focus-trap code of our own.
+
+## D-062: The UI kit is shadcn/ui on Base UI
+
+- **Status:** Implemented (feature 10) — asked for by the repository owner; a change of plan
+- **Context:** The plan had a hand-written UI kit (feature 9) and native form controls. After seeing the portal in the browser, the repository owner found the native `<select>`, the date inputs, the hand-made calendar and the toasts too plain and asked for the libraries large production apps use.
+- **Decision:**
+  - **shadcn/ui** (CLI 4.21, `components.json`, style `base-nova`) on **Base UI** primitives (`@base-ui/react` 1.8), shadcn's default since July 2026 ([changelog](https://ui.shadcn.com/docs/changelog), checked 2026-09-26; `shadcn init --help` offers `--base base|radix|aria`). The CLI copies each component's source into `components/ui`, so the code is ours to change; components are added with `npx shadcn add <name>` and then adapted.
+  - The kit: `button`, `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker 10), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, and `separator` and `textarea`, which `field` and `input-group` use, plus our own `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state` and `error-boundary`. Icons come from lucide-react; the font is Geist, self-hosted through `@fontsource-variable/geist`.
+  - Adapted after generation: links are router `Link`s styled with `buttonVariants` (Base UI's Button must not render links), including `PaginationLink`; the Sonner toaster has one light theme (no `next-themes`); unused `date-fns` and `next-themes` were removed. `@/` resolves to `src/` for the generated files; our own code keeps relative imports.
+  - Tenant branding reaches popups: they render into `document.body`, outside the portal's markup, so `useBrandColor` sets `--primary` and `--ring` on the document while a portal is shown (and removes them when it is left); the landing page's cards keep an inline `brandStyle`.
+  - The portal is rebuilt on it: a searchable city combobox, one date range picker (Popover + Calendar, `mode="range"`, two months on desktop, one on phones, past days disabled, `timeZone="UTC"`), selects for guests and sort, the filter sheet, and the availability calendar ([D-060](#d-060-the-availability-calendar-shows-a-year-ahead-one-request-per-view)).
+  - oxlint's `only-export-components` is off for `components/ui` only: the kit exports variant helpers (`buttonVariants`) next to components.
+- **Consequences:** An accessible, familiar look with little code of our own, and the same kit for the auth, host and admin pages. The JS bundle grows (about 910 kB before gzip, 290 kB gzipped); loading pages lazily is noted as a possible improvement. File names in `components/ui` are kebab-case, as the CLI writes them.
+
+## D-063: Toasts are Sonner, outside Redux
+
+- **Status:** Implemented (feature 10) — replaces the toast state the plan put in the `ui` slice
+- **Context:** The plan kept toasts in the `ui` slice and rendered them with a hand-written `Toast`. The repository owner asked for the toast library large apps use.
+- **Decision:** Sonner (2.0) through the shadcn `sonner` component: `<Toaster position="bottom-right" visibleToasts={3} closeButton />` in `RootLayout`. `rtkErrorMiddleware` calls `toast.error(message, { description: 'Request id: …' })` for 403, 5xx and network errors, as before. The `ui` slice keeps only the filter sheet's state.
+- **Consequences:** Stacking, timers, swipe-to-dismiss and a live region come from the library; the middleware test checks the `toast.error` calls instead of the slice.

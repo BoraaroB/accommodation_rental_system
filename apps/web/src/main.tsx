@@ -5,7 +5,7 @@ import { RouterProvider } from 'react-router';
 import { router } from './app/router';
 import { makeStore } from './store/store';
 import { reportError } from './lib/logger';
-import { ErrorBoundary } from './components/ui/ErrorBoundary';
+import { ErrorBoundary } from './components/ui/error-boundary';
 import './styles/index.css';
 
 const store = makeStore();

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  addMonths,
   daysBetween,
   eachDay,
   isIsoDate,
   isoDateSchema,
   parseIsoDate,
+  startOfMonth,
   toIsoDate,
   today,
 } from './date.js';
@@ -112,6 +114,36 @@ describe('parseIsoDate', () => {
 describe('toIsoDate', () => {
   it('turns the UTC midnight of a date column back into the date', () => {
     expect(toIsoDate(parseIsoDate('2026-10-01'))).toBe('2026-10-01');
+  });
+});
+
+describe('addMonths', () => {
+  it.each([
+    ['2026-10-01', 1, '2026-11-01'],
+    ['2026-10-15', 0, '2026-10-15'],
+    ['2026-12-01', 1, '2027-01-01'],
+    ['2027-01-01', -1, '2026-12-01'],
+    ['2026-10-01', 12, '2027-10-01'],
+    ['2027-01-31', 1, '2027-02-28'],
+    ['2028-01-31', 1, '2028-02-29'],
+    ['2026-10-31', -1, '2026-09-30'],
+    ['0050-01-31', 1, '0050-02-28'],
+  ])('addMonths(%s, %i) returns %s', (date, months, expected) => {
+    expect(addMonths(date, months)).toBe(expected);
+  });
+
+  it('rejects a fractional number of months', () => {
+    expect(() => addMonths('2026-10-01', 1.5)).toThrow(RangeError);
+  });
+});
+
+describe('startOfMonth', () => {
+  it.each([
+    ['2026-10-15', '2026-10-01'],
+    ['2026-10-01', '2026-10-01'],
+    ['2028-02-29', '2028-02-01'],
+  ])('startOfMonth(%s) is %s', (date, expected) => {
+    expect(startOfMonth(date)).toBe(expected);
   });
 });
 

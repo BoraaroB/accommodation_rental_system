@@ -152,35 +152,39 @@ The host panel (feature 7) reuses them: blocking checks the range with the same 
 
 ## Web structure
 
-`apps/web/src`, organised by feature with conventional folder names ([D-058](decisions.md#d-058-the-web-app-is-organised-by-feature-with-conventional-folder-names)). Feature 9 lays the foundation; features 10–13 add the pages.
+`apps/web/src`, organised by feature with conventional folder names ([D-058](decisions.md#d-058-the-web-app-is-organised-by-feature-with-conventional-folder-names)). Feature 9 lays the foundation; feature 10 adds the landing page and the portal; features 11–13 add sign-in and the panels.
 
 ```
 main.tsx          root: error hooks, Redux provider, router
 app/              router.ts (all routes), layouts/ (Root, Portal, Host, Admin)
-pages/            route components: NotFoundPage, errors/ (route error boundaries); feature pages from feature 10
-features/<name>/  listings, auth, host, admin: api.ts (injected endpoints), components/, hooks/
-components/       shared components: ui/ (the UI kit), Toasts
-hooks/            hooks shared by several features (created with the first one)
+pages/            route components: LandingPage, PortalHomePage, ListingDetailPage, NotFoundPage, errors/
+features/<name>/  api.ts (injected endpoints), components/, hooks/ — tenants (portals, branding),
+                  listings (URL filters, search, cards, availability); auth, host, admin follow
+components/       shared components: ui/ (the UI kit: shadcn/ui on Base UI), AvailabilityCalendar,
+                  DateRangePicker, Pager
+hooks/            hooks shared by several features: useTenantSlug, useMediaQuery
 store/            makeStore (baseApi + ui slice + rtkErrorMiddleware), typed hooks; the auth slice comes with feature 11
 api/              baseApi (one createApi), errors.ts (getErrorMessage, getRequestId)
 config/           env.ts: the only module that reads import.meta.env, validated with zod
-lib/              logger (reportError: the single error-reporting hook), cx
-styles/           tokens.css (@theme design tokens), index.css
-test/             Vitest setup and render helpers
+lib/              logger (reportError: the single error-reporting hook), utils (cn), format (money, dates, Intl in UTC)
+styles/           tokens.css (the shadcn theme: CSS variables + @theme inline), index.css
+test/             Vitest setup, the fetch stub (apiStub), fixtures and render helpers
 ```
 
 - A page composes feature components. Code used by more than one feature goes into the shared folders, which never import from `features/` or `pages/`.
 - `api/baseApi.ts`: features inject their endpoints; response schemas are checked outside production, and a mismatch becomes a normal error.
-- `components/ui`: `Button`, `Input`, `Field`, `Card`, `Badge`, `Skeleton`, `EmptyState`, `ErrorState`, `QueryState`, `Toast`, `ErrorBoundary`. Variant maps, design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first.
+- `components/ui` is **shadcn/ui on Base UI** ([D-062](decisions.md#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the CLI (`npx shadcn add <name>`, configured by `components.json`) copies each component's source here, and it is ours to adapt. Generated: `button`, `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, plus `separator` and `textarea` (used by `field` and `input-group`). Our own: `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state`, `error-boundary`. Design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first; icons from lucide-react; links styled as buttons are router `Link`s with `buttonVariants`.
 
-**Routes** — pages are added by later features:
+**Routes:**
 
-| Route                   | Layout                         | Who (from feature 11) |
-| ----------------------- | ------------------------------ | --------------------- |
-| `/:tenantSlug/...`      | `PortalLayout`                 | everyone              |
-| `/:tenantSlug/host/...` | `HostLayout` inside the portal | host of that tenant   |
-| `/admin/...`            | `AdminLayout`                  | superadmin            |
-| `*`                     | —                              | NotFound              |
+| Route                       | Page / layout                      | Who (from feature 11) |
+| --------------------------- | ---------------------------------- | --------------------- |
+| `/`                         | `LandingPage`: every portal        | everyone              |
+| `/:tenantSlug`              | `PortalHomePage` in `PortalLayout` | everyone              |
+| `/:tenantSlug/listings/:id` | `ListingDetailPage`                | everyone              |
+| `/:tenantSlug/host/...`     | `HostLayout` inside the portal     | host of that tenant   |
+| `/admin/...`                | `AdminLayout`                      | superadmin            |
+| `*`                         | —                                  | NotFound              |
 
 `admin` is a reserved tenant slug, and React Router ranks the static segment first, so `/admin` never reaches a portal.
 
@@ -188,8 +192,19 @@ test/             Vitest setup and render helpers
 
 - A root boundary shows a full-page fallback. Each layout's pages sit in a pathless content route whose boundary replaces only the page ([D-054](decisions.md#d-054-a-layouts-error-boundary-sits-on-a-pathless-content-route)). The `ErrorBoundary` class protects single widgets.
 - Request errors are shown by `QueryState` (loading → `Skeleton`, error → `ErrorState` with the request id and Retry, empty → `EmptyState`).
-- `rtkErrorMiddleware` adds a toast for 403, 5xx and network errors.
+- `rtkErrorMiddleware` shows a Sonner toast for 403, 5xx and network errors ([D-063](decisions.md#d-063-toasts-are-sonner-outside-redux)); the `Toaster` sits in `RootLayout`.
 - Every error is reported once through `reportError` ([D-055](decisions.md#d-055-every-client-error-is-reported-once)).
+
+**Portal (feature 10):**
+
+- `PortalLayout` loads the tenant (`GET /t/:tenantSlug`) and sets its primary colour as `--primary` and `--ring` on the document while the portal is shown (`useBrandColor`), so every token utility follows the tenant — including the popups the kit renders into `<body>`. The header, in the tenant's colour, shows the name and logo and an "All portals" link back to `/`; the footer shows the contact e-mail. An unknown tenant, or an address that is not a slug (not sent to the API), shows "Portal not found". The landing page has its own navbar.
+- Filters, sort and page live in the URL ([D-017](decisions.md#d-017-listing-filters-live-in-the-url)). `useListingFilters` parses them with `listingQuerySchema`, drops invalid values and writes changes back, always to page 1. `useGetListingsQuery({ tenantSlug, query })` caches by exactly those arguments, so back and forward are instant.
+- The search and price forms start from the URL and are remounted when it changes, so a removed filter also leaves the controls.
+- The search bar — a searchable city combobox, one date range picker (`DateRangePicker`: Popover + Calendar in UTC) and a guests select — collapses to a summary on phones; the price filter (euros, with a € prefix) sits in a sidebar on desktop and in a sheet on phones ([D-061](decisions.md#d-061-the-filter-drawer-is-the-ui-kits-sheet)); active filters are removable chips; sort is a select.
+- Result cards link to the detail with the searched dates. The detail shows the facts, the price (and the stay's total with dates), "Available for your dates ✓/✗" and the availability calendar on the kit's Calendar ([D-060](decisions.md#d-060-the-availability-calendar-shows-a-year-ahead-one-request-per-view)).
+- `ScrollRestoration` starts every new page at the top.
+
+**Tests:** page tests go through the real router and store with a stubbed `fetch` behind the test API URL `http://api.test/api/v1` ([D-059](decisions.md#d-059-web-tests-stub-fetch-behind-an-absolute-test-api-url)).
 
 **Dev server:** `vite.config.ts` reads `WEB_PORT` and `API_PROXY_TARGET` (validated only when the dev server runs) and forwards `/api` to the API, so the browser calls the API on its own origin.
 

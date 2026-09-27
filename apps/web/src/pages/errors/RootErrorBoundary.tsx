@@ -1,5 +1,5 @@
 import { useRouteError } from 'react-router';
-import { Button } from '../../components/ui/Button';
+import { Button, buttonVariants } from '../../components/ui/button';
 import { NotFoundPage } from '../NotFoundPage';
 import { describeRouteError } from './routeError';
 
@@ -19,13 +19,15 @@ export function RootErrorBoundary() {
       role="alert"
       className="mx-auto flex min-h-dvh max-w-md flex-col items-center justify-center gap-3 px-4 text-center"
     >
-      <h1 className="text-2xl font-semibold text-text">Something went wrong</h1>
-      <p className="text-sm text-muted">{message}</p>
+      <h1 className="text-2xl font-semibold">Something went wrong</h1>
+      <p className="text-sm text-muted-foreground">{message}</p>
       <div className="mt-2 flex gap-3">
-        <Button onClick={() => window.location.reload()}>Try again</Button>
+        <Button size="lg" onClick={() => window.location.reload()}>
+          Try again
+        </Button>
         <a
           href="/"
-          className="inline-flex h-11 items-center rounded-control px-4 text-sm font-medium text-primary hover:bg-primary/10"
+          className={buttonVariants({ variant: 'ghost', size: 'lg' })}
         >
           Home
         </a>

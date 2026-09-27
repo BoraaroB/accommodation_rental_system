@@ -26,6 +26,31 @@ export function addDays(date: IsoDate, days: number): IsoDate {
   return toIsoDate(shifted);
 }
 
+/**
+ * Moves an ISO date by a whole number of months; the day is kept, or clamped
+ * to the last day of a shorter month (2027-01-31 + 1 month is 2027-02-28).
+ */
+export function addMonths(date: IsoDate, months: number): IsoDate {
+  if (!Number.isInteger(months)) {
+    throw new RangeError(`months must be an integer, got ${months}`);
+  }
+  const parsed = parseIsoDate(date);
+  const year = parsed.getUTCFullYear();
+  const month = parsed.getUTCMonth() + months;
+  // setUTCFullYear, unlike Date.UTC, does not turn years 0–99 into 1900–1999.
+  const shifted = new Date(0);
+  // Day 0 of the next month is the last day of this one.
+  shifted.setUTCFullYear(year, month + 1, 0);
+  const day = Math.min(parsed.getUTCDate(), shifted.getUTCDate());
+  shifted.setUTCFullYear(year, month, day);
+  return toIsoDate(shifted);
+}
+
+/** The first day of the date's month. */
+export function startOfMonth(date: IsoDate): IsoDate {
+  return `${parseIsoDate(date).toISOString().slice(0, 7)}-01`;
+}
+
 /** Whole days from `from` to `to` (negative when `to` is earlier): the nights of a stay. */
 export function daysBetween(from: IsoDate, to: IsoDate): number {
   // Both are UTC midnights, so the difference is an exact number of days.

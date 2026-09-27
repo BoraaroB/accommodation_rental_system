@@ -1,7 +1,7 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { describe, expect, it } from 'vitest';
+import { toast } from 'sonner';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { makeStore } from './store';
-import { MAX_TOASTS } from './uiSlice';
 
 // A request that fails the way RTK Query's do: rejected with the error as the value.
 const failingRequest = createAsyncThunk(
@@ -22,62 +22,50 @@ const apiError = (statusCode: number) => ({
   },
 });
 
+/** The error toasts shown after one failed request. */
 async function toastsAfter(error: unknown) {
-  const store = makeStore();
-  await store.dispatch(failingRequest(error));
-  return store.getState().ui.toasts;
+  const showError = vi.spyOn(toast, 'error').mockImplementation(() => 1);
+  await makeStore().dispatch(failingRequest(error));
+  return showError.mock.calls;
 }
 
 describe('rtkErrorMiddleware', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('shows a permission toast on 403', async () => {
     expect(await toastsAfter(apiError(403))).toEqual([
-      expect.objectContaining({
-        tone: 'danger',
-        message: "You don't have permission to do that.",
-      }),
+      ["You don't have permission to do that."],
     ]);
   });
 
   it('shows the message and request id on 5xx', async () => {
     expect(await toastsAfter(apiError(500))).toEqual([
-      expect.objectContaining({
-        message: 'failed with 500',
-        requestId: 'req-500',
-      }),
+      ['failed with 500', { description: 'Request id: req-500' }],
     ]);
   });
 
   it('shows a toast when the server cannot be reached', async () => {
-    const [toast] = await toastsAfter({
+    const [[message]] = await toastsAfter({
       status: 'FETCH_ERROR',
       error: 'offline',
     });
-    expect(toast.message).toMatch(/could not be reached/);
+    expect(message).toMatch(/could not be reached/);
   });
 
   it('shows a toast when a proxy answers 502 with an HTML page', async () => {
-    const [toast] = await toastsAfter({
-      status: 'PARSING_ERROR',
-      originalStatus: 502,
-      data: '<html>Bad Gateway</html>',
-      error: 'SyntaxError: Unexpected token <',
-    });
-    expect(toast.message).toBe('The request failed (HTTP 502).');
+    expect(
+      await toastsAfter({
+        status: 'PARSING_ERROR',
+        originalStatus: 502,
+        data: '<html>Bad Gateway</html>',
+        error: 'SyntaxError: Unexpected token <',
+      }),
+    ).toEqual([['The request failed (HTTP 502).', undefined]]);
   });
 
   it.each([400, 404, 409])('leaves %i to the page', async (status) => {
     expect(await toastsAfter(apiError(status))).toEqual([]);
-  });
-
-  it(`keeps at most ${MAX_TOASTS} toasts, the newest`, async () => {
-    const store = makeStore();
-    for (const status of [500, 501, 502, 503]) {
-      await store.dispatch(failingRequest(apiError(status)));
-    }
-    expect(store.getState().ui.toasts.map((toast) => toast.requestId)).toEqual([
-      'req-501',
-      'req-502',
-      'req-503',
-    ]);
   });
 });

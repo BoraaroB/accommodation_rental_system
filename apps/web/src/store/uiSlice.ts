@@ -1,41 +1,24 @@
-import { createSlice, nanoid, type PayloadAction } from '@reduxjs/toolkit';
-import type { ToastTone } from '../components/ui/Toast';
-
-export interface ToastMessage {
-  id: string;
-  tone: ToastTone;
-  message: string;
-  requestId?: string;
-}
+import { createSlice } from '@reduxjs/toolkit';
 
 export interface UiState {
-  toasts: ToastMessage[];
+  /** The portal's filter sheet on phones. */
+  filtersDrawerOpen: boolean;
 }
 
-/** Older toasts are dropped beyond this, so a burst of errors cannot fill the screen. */
-export const MAX_TOASTS = 3;
+const initialState: UiState = { filtersDrawerOpen: false };
 
-const initialState: UiState = { toasts: [] };
-
+/** UI state shared across components; toasts live in Sonner's own store. */
 export const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
-    toastShown: {
-      reducer(state, action: PayloadAction<ToastMessage>) {
-        state.toasts.push(action.payload);
-        state.toasts = state.toasts.slice(-MAX_TOASTS);
-      },
-      prepare(toast: Omit<ToastMessage, 'id'>) {
-        return { payload: { ...toast, id: nanoid() } };
-      },
+    filtersDrawerOpened(state) {
+      state.filtersDrawerOpen = true;
     },
-    toastDismissed(state, action: PayloadAction<string>) {
-      state.toasts = state.toasts.filter(
-        (toast) => toast.id !== action.payload,
-      );
+    filtersDrawerClosed(state) {
+      state.filtersDrawerOpen = false;
     },
   },
 });
 
-export const { toastShown, toastDismissed } = uiSlice.actions;
+export const { filtersDrawerOpened, filtersDrawerClosed } = uiSlice.actions;
