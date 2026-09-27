@@ -16,7 +16,7 @@ const routes = [
 describe('PortalLayout', () => {
   it("shows the portal in its tenant's branding", async () => {
     stubApi({
-      'GET /t/adriatic': aTenant({
+      'GET /tenants/adriatic': aTenant({
         logoUrl: 'https://cdn.example.com/adriatic.png',
         primaryColor: '#aa3300',
         contactEmail: 'contact@adriatic.example.com',
@@ -52,7 +52,7 @@ describe('PortalLayout', () => {
 
   it('shows "Portal not found" for an unknown tenant', async () => {
     stubApi({
-      'GET /t/nowhere': jsonResponse(
+      'GET /tenants/nowhere': jsonResponse(
         404,
         apiErrorBody(404, 'TENANT_NOT_FOUND', 'Tenant not found'),
       ),
@@ -73,7 +73,7 @@ describe('PortalLayout', () => {
 
   it('shows the error with Retry when the portal cannot be loaded', async () => {
     stubApi({
-      'GET /t/adriatic': jsonResponse(
+      'GET /tenants/adriatic': jsonResponse(
         500,
         apiErrorBody(500, 'INTERNAL_ERROR', 'Internal server error'),
       ),

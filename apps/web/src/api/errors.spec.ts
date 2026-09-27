@@ -13,7 +13,7 @@ function apiError(overrides: Partial<ApiError> = {}): ApiError {
     error: 'Conflict',
     code: 'DAY_ALREADY_BOOKED',
     message: '2026-10-02 is booked',
-    path: '/api/v1/t/adriatic/host/listings/1/blocked-days',
+    path: '/api/v1/tenants/adriatic/host/listings/1/blocked-days',
     timestamp: '2026-09-26T10:00:00.000Z',
     requestId: 'req-123',
     ...overrides,

@@ -335,16 +335,19 @@ describe('Admin panel (e2e)', () => {
 
       const portals = await call('get', '/tenants').expect(200);
       expect(portals.body).toContainEqual(branding);
-      const portal = await call('get', `/t/${config.slug}`).expect(200);
+      const portal = await call('get', `/tenants/${config.slug}`).expect(200);
       expect(publicTenantSchema.strict().parse(portal.body)).toEqual(branding);
-      const listings = await call('get', `/t/${config.slug}/listings`).expect(
-        200,
-      );
+      const listings = await call(
+        'get',
+        `/tenants/${config.slug}/listings`,
+      ).expect(200);
       expect(listingPageSchema.parse(listings.body)).toMatchObject({
         items: [],
         total: 0,
       });
-      const cities = await call('get', `/t/${config.slug}/cities`).expect(200);
+      const cities = await call('get', `/tenants/${config.slug}/cities`).expect(
+        200,
+      );
       expect(cities.body).toEqual([]);
     });
 
@@ -374,7 +377,7 @@ describe('Admin panel (e2e)', () => {
     );
 
     it('keeps the reserved words off the portal routes', async () => {
-      const res = await call('get', '/t/admin').expect(404);
+      const res = await call('get', '/tenants/admin').expect(404);
       expectApiError(res, 404, 'TENANT_NOT_FOUND');
     });
 
@@ -426,7 +429,7 @@ describe('Admin panel (e2e)', () => {
         contactEmail: 'desk@example.com',
       };
       expect(adminTenantSchema.strict().parse(res.body)).toEqual(edited);
-      const portal = await call('get', `/t/${tenant.slug}`).expect(200);
+      const portal = await call('get', `/tenants/${tenant.slug}`).expect(200);
       expect(portal.body).toMatchObject({
         name: tenant.name,
         primaryColor: '#112233',
@@ -486,8 +489,8 @@ describe('Admin panel (e2e)', () => {
         slug: slugOf('moved'),
       }).expect(200);
 
-      await call('get', `/t/${slugOf('moved')}`).expect(200);
-      const old = await call('get', `/t/${tenant.slug}`).expect(404);
+      await call('get', `/tenants/${slugOf('moved')}`).expect(200);
+      const old = await call('get', `/tenants/${tenant.slug}`).expect(404);
       expectApiError(old, 404, 'TENANT_NOT_FOUND');
     });
   });
@@ -515,7 +518,9 @@ describe('Admin panel (e2e)', () => {
         .hostOf.map((tenant) => tenant.slug);
       expect(hosted).toContain(slugOf('a'));
       expect(hosted).not.toContain(slugOf('doomed'));
-      const portal = await call('get', `/t/${slugOf('doomed')}`).expect(404);
+      const portal = await call('get', `/tenants/${slugOf('doomed')}`).expect(
+        404,
+      );
       expectApiError(portal, 404, 'TENANT_NOT_FOUND');
       const again = await call(
         'delete',
@@ -563,9 +568,9 @@ describe('Admin panel (e2e)', () => {
       expect(userProfileSchema.parse(me.body).hostOf).toEqual([
         { slug: slugOf('a'), name: 'E2E Admin a' },
       ]);
-      await call('get', `/t/${slugOf('a')}/host/listings`, { token }).expect(
-        200,
-      );
+      await call('get', `/tenants/${slugOf('a')}/host/listings`, {
+        token,
+      }).expect(200);
     });
 
     it('makes an existing account a host without changing its name or password', async () => {
@@ -586,7 +591,11 @@ describe('Admin panel (e2e)', () => {
         email: emailOf('guest'),
         password: 'another-password-1',
       }).expect(401);
-      await call('get', `/t/${slugOf('a')}/host/listings`, 'guest').expect(200);
+      await call(
+        'get',
+        `/tenants/${slugOf('a')}/host/listings`,
+        'guest',
+      ).expect(200);
     });
 
     it('answers an account that already hosts the tenant with 409 ALREADY_HOST', async () => {
@@ -666,17 +675,21 @@ describe('Admin panel (e2e)', () => {
 
     it('removes a host; the account stays and loses the panel at once', async () => {
       const leaving = ids.leaving ?? '';
-      await call('get', `/t/${slugOf('a')}/host/listings`, 'leaving').expect(
-        200,
-      );
+      await call(
+        'get',
+        `/tenants/${slugOf('a')}/host/listings`,
+        'leaving',
+      ).expect(200);
 
       await call('delete', hosts(tenants.a, leaving), 'admin').expect(204);
 
       expect(await prisma.user.count({ where: { id: leaving } })).toBe(1);
       // The same token: roles are not in it (D-007).
-      await call('get', `/t/${slugOf('a')}/host/listings`, 'leaving').expect(
-        403,
-      );
+      await call(
+        'get',
+        `/tenants/${slugOf('a')}/host/listings`,
+        'leaving',
+      ).expect(403);
       const again = await call(
         'delete',
         hosts(tenants.a, leaving),

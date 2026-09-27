@@ -9,18 +9,18 @@ import { TenantsService } from './tenants.service.js';
 
 /** The portals as visitors see them: public, no sign-in. */
 @Public()
-@Controller()
+@Controller('tenants')
 export class TenantsController {
   constructor(private readonly tenants: TenantsService) {}
 
   /** Every portal, for the landing page. */
-  @Get('tenants')
+  @Get()
   list(): Promise<PublicTenant[]> {
     return this.tenants.listPublic();
   }
 
   /** The portal's configuration and branding. */
-  @Get('t/:tenantSlug')
+  @Get(':tenantSlug')
   // On this handler only: `TenantGuard` needs the `:tenantSlug` that `GET /tenants` has not.
   @UseGuards(TenantGuard)
   get(@CurrentTenant() tenant: TenantRecord): PublicTenant {

@@ -14,14 +14,14 @@ import { aListing, aPage, aTenant } from '../test/fixtures';
 import { renderRoute } from '../test/renderRoute';
 
 const listing = aListing();
-const LISTING = `/t/adriatic/listings/${listing.id}`;
+const LISTING = `/tenants/adriatic/listings/${listing.id}`;
 const AVAILABILITY = `${LISTING}/availability`;
 const inDays = (days: number) => addDays(today(), days);
 
 /** A listing whose `takenDays` are unavailable; availability answers for any range. */
 function stubListing(takenDays: IsoDate[] = [], overrides = {}) {
   return stubApi({
-    'GET /t/adriatic': aTenant(),
+    'GET /tenants/adriatic': aTenant(),
     [`GET ${LISTING}`]: { ...listing, ...overrides },
     [`GET ${AVAILABILITY}`]: (url: URL) => {
       const from = url.searchParams.get('from')!;
@@ -115,7 +115,7 @@ describe('ListingDetailPage', () => {
 
   it('shows "Listing not found" when the portal has no such listing', async () => {
     stubApi({
-      'GET /t/adriatic': aTenant(),
+      'GET /tenants/adriatic': aTenant(),
       [`GET ${LISTING}`]: jsonResponse(
         404,
         apiErrorBody(404, 'LISTING_NOT_FOUND', 'Listing not found'),
@@ -130,19 +130,19 @@ describe('ListingDetailPage', () => {
   });
 
   it('shows "Listing not found" for a malformed id without asking the API', async () => {
-    const api = stubApi({ 'GET /t/adriatic': aTenant() });
+    const api = stubApi({ 'GET /tenants/adriatic': aTenant() });
     renderRoute('/adriatic/listings/not-a-uuid');
 
     expect(await screen.findByText('Listing not found')).toBeInTheDocument();
-    expect(api.requestCount('/t/adriatic/listings/not-a-uuid')).toBe(0);
+    expect(api.requestCount('/tenants/adriatic/listings/not-a-uuid')).toBe(0);
   });
 
   it('goes back to the results it was opened from', async () => {
     const user = userEvent.setup();
     stubApi({
-      'GET /t/adriatic': aTenant(),
-      'GET /t/adriatic/cities': ['Split'],
-      'GET /t/adriatic/listings': aPage([listing]),
+      'GET /tenants/adriatic': aTenant(),
+      'GET /tenants/adriatic/cities': ['Split'],
+      'GET /tenants/adriatic/listings': aPage([listing]),
       [`GET ${LISTING}`]: listing,
       [`GET ${AVAILABILITY}`]: (url: URL) => ({
         from: url.searchParams.get('from'),

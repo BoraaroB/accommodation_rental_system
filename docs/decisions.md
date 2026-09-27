@@ -49,9 +49,9 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-006: Tenant isolation in the application layer
 
-- **Status:** Implemented for `TenantGuard` (feature 5) and the listings repository (feature 6); bookings and blocked days follow in feature 7
+- **Status:** Implemented (features 5–7): `TenantGuard` in feature 5, the listings repository in feature 6, bookings and blocked days in feature 7
 - **Context:** "One tenant's data must never be visible on another tenant's portal"; where to enforce it is our choice.
-- **Decision:** All tenant routes are under `/api/v1/t/:tenantSlug/...`; `TenantGuard` resolves the slug (unknown → 404). Repository methods for listings, bookings and blocked days always take `tenantId`; single rows are loaded with `findFirst({ where: { id, tenantId } })`, never by id alone. Postgres row-level security is deliberately out of scope.
+- **Decision:** All tenant routes are under `/api/v1/tenants/:tenantSlug/...` (the prefix was `/t/` until [D-064](#d-064-tenant-routes-are-under-tenantstenantslug)); `TenantGuard` resolves the slug (unknown → 404). Repository methods for listings, bookings and blocked days always take `tenantId`; single rows are loaded with `findFirst({ where: { id, tenantId } })`, never by id alone. Postgres row-level security is deliberately out of scope.
 - **Consequences:** Isolation is explicit, reviewable and proven by e2e tests (tenant A's listing through tenant B's URL → 404; a host of A on B's host routes → 403). Row-level security would add a second line of defence, but it needs the tenant passed to every database session, which is extra infrastructure for the time available; it stays a "Could".
 
 ## D-007: Roles are not in the token
@@ -351,7 +351,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 - **Status:** Implemented (feature 6)
 - **Context:** Challenge item 1 asks for "a list of all listings"; the challenge also says one tenant's data must never be visible on another tenant's portal.
-- **Decision:** "All listings" means all listings of the portal's tenant. Every portal endpoint lives under `/api/v1/t/:tenantSlug/...`, and the city list, the listing list, the detail and availability are scoped to that tenant. There is no endpoint that lists listings across tenants.
+- **Decision:** "All listings" means all listings of the portal's tenant. Every portal endpoint lives under `/api/v1/tenants/:tenantSlug/...`, and the city list, the listing list, the detail and availability are scoped to that tenant. There is no endpoint that lists listings across tenants.
 - **Consequences:** Follows from D-004 and D-006. A listing of tenant A requested through tenant B's portal is a 404 `LISTING_NOT_FOUND`, the same answer as for an id that does not exist.
 
 ## D-045: Listing pages: 24 by default, at most 48, ties broken by id
@@ -364,7 +364,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - A page past the end is a 200 with no items and the real `total`.
   - `findMany` and `count` run in parallel with `Promise.all`. A batch transaction would not make them consistent under READ COMMITTED, so it would only add a round trip.
   - Price filters are capped at 2,147,483,647 cents, the largest value of the 32-bit price column, so an out-of-range price is a 400 instead of a database error. `page` has no upper bound; a page past the end is simply empty. An empty number (`?guests=`) counts as not sent instead of being coerced to 0. Decided by the repository owner after the review showed the 500.
-  - The short, bounded lookup lists (`GET /tenants`, `GET /t/:tenantSlug/cities`) are plain arrays.
+  - The short, bounded lookup lists (`GET /tenants`, `GET /tenants/:tenantSlug/cities`) are plain arrays.
 - **Consequences:** Stable, cacheable pages. Offset pagination slows down on deep pages; keyset pagination is the option at a larger scale.
 
 ## D-046: Public availability lists the taken days of a range
@@ -372,7 +372,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Status:** Implemented (feature 6)
 - **Context:** Challenge item 4: "On a single listing — when that listing is available to book." The calendar needs to know which days to strike through.
 - **Decision:**
-  - `GET /t/:tenantSlug/listings/:id/availability?from&to` returns `{ from, to, unavailableDays }`: the days of `[from, to)` taken by a non-cancelled booking or a blocked day, sorted. It does not say which of the two takes a day.
+  - `GET /tenants/:tenantSlug/listings/:id/availability?from&to` returns `{ from, to, unavailableDays }`: the days of `[from, to)` taken by a non-cancelled booking or a blocked day, sorted. It does not say which of the two takes a day.
   - The range follows the list's date filter: both dates required, `to` after `from`, `from` not before today (D-012).
   - The filter and the calendar share one predicate (`activeStaysOverlapping`, `blockedDaysWithin`), so they cannot disagree. `unavailableDays` expands and clips the stays in a pure, unit-tested function.
 - **Consequences:** The work grows with the occupied days in the range, not with its length. Visitors cannot tell a host's blocked days from bookings.
@@ -381,7 +381,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 - **Status:** Implemented (feature 6)
 - **Context:** Every portal page needs the tenant's name and branding, and `TenantGuard` already loads the tenant for every tenant route.
-- **Decision:** `TenantGuard` selects the public configuration (logo URL, primary colour, contact e-mail, currency) with the slug lookup, so `GET /t/:tenantSlug` needs no second query. The response (`PublicTenant`) and `GET /tenants` leave out the tenant's `id`.
+- **Decision:** `TenantGuard` selects the public configuration (logo URL, primary colour, contact e-mail, currency) with the slug lookup, so `GET /tenants/:tenantSlug` needs no second query. The response (`PublicTenant`) and `GET /tenants` leave out the tenant's `id`.
 - **Consequences:** Four more columns on a lookup that runs anyway. Internal ids stay out of the portal, which addresses tenants by slug only; the admin panel uses the id ([D-051](#d-051-the-admin-panel-addresses-tenants-by-id)).
 
 ## D-048: Host bookings carry the listing's title and a total at its current price
@@ -389,7 +389,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Status:** Implemented (feature 7)
 - **Context:** Challenge item 9: "Viewing bookings." The host table shows listing, dates, nights, guests, status and total. `BookingDto` has none of the listing's data, and bookings carry no price.
 - **Decision:**
-  - `GET /t/:tenantSlug/host/bookings` returns `Page<HostBooking>`: `BookingDto` plus `listingTitle` and `totalCents`. `BookingDto` stays the base shape (D-016).
+  - `GET /tenants/:tenantSlug/host/bookings` returns `Page<HostBooking>`: `BookingDto` plus `listingTitle` and `totalCents`. `BookingDto` stays the base shape (D-016).
   - The total is the nights times the listing's **current** price per night (`stayTotalCents`).
   - Filters: `listingId`, `status`, and `from`/`to` keeping the stays that take a day of `[from, to)` — the calendar's rule, whatever the status. Past dates are allowed. Sorted by check-in, then id.
   - A `listingId` of another tenant gives an empty page, like any filter that matches nothing.
@@ -483,7 +483,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 - **Status:** Implemented (feature 10)
 - **Context:** Portal pages load data through RTK Query. Testing them should cover the whole chain (URL filters → request → response schema → UI) without a server or a new dependency. Node's `Request`, which `fetchBaseQuery` builds, rejects a relative URL such as `/api/v1/...`; this was checked in the test environment.
-- **Decision:** The Vitest config sets `VITE_API_BASE_URL` to `http://api.test/api/v1` (`.test` is a reserved top-level domain). `test/setup.ts` replaces `fetch` before every test; `stubApi({ 'GET /t/adriatic': body })` answers by method and path relative to the base URL, and a request no route answers fails the test when it ends. Tests read the query a page sent with `lastQuery(path)`.
+- **Decision:** The Vitest config sets `VITE_API_BASE_URL` to `http://api.test/api/v1` (`.test` is a reserved top-level domain). `test/setup.ts` replaces `fetch` before every test; `stubApi({ 'GET /tenants/adriatic': body })` answers by method and path relative to the base URL, and a request no route answers fails the test when it ends. Tests read the query a page sent with `lastQuery(path)`.
 - **Consequences:** Page tests prove what the page asks the API for, including the URL's filters, and nothing can reach a network. jsdom lacks `window.scrollTo` (called by `ScrollRestoration`) and `matchMedia`, so the setup stubs the first and `useMediaQuery` treats the second as "not desktop" (one calendar month). The Base UI controls need no stand-ins: tests open selects, the city combobox, the date picker and the filter sheet by role and label.
 
 ## D-060: The availability calendar shows a year ahead, one request per view
@@ -519,3 +519,10 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** The plan kept toasts in the `ui` slice and rendered them with a hand-written `Toast`. The repository owner asked for the toast library large apps use.
 - **Decision:** Sonner (2.0) through the shadcn `sonner` component: `<Toaster position="bottom-right" visibleToasts={3} closeButton />` in `RootLayout`. `rtkErrorMiddleware` calls `toast.error(message, { description: 'Request id: …' })` for 403, 5xx and network errors, as before. The `ui` slice keeps only the filter sheet's state.
 - **Consequences:** Stacking, timers, swipe-to-dismiss and a live region come from the library; the middleware test checks the `toast.error` calls instead of the slice.
+
+## D-064: Tenant routes are under `/tenants/:tenantSlug`
+
+- **Status:** Implemented (feature 10a) — replaces the `/t/:tenantSlug` prefix of the plan and of D-006
+- **Context:** The portal and host routes were under `/api/v1/t/:tenantSlug/...`, while the list of the same portals is `GET /tenants` and the admin panel uses `/admin/tenants/:tenantId`. One resource had two prefixes, and `t` does not say what it is. The repository owner asked for consistent routes.
+- **Decision:** Every tenant route moves to `/api/v1/tenants/:tenantSlug/...` (`GET /tenants/:tenantSlug`, `/tenants/:tenantSlug/cities`, `/tenants/:tenantSlug/listings[/:id[/availability]]`, `/tenants/:tenantSlug/host/...`). `TenantsController` takes the `tenants` prefix, so `GET /tenants` and `GET /tenants/:tenantSlug` are the collection and one of its items. Nothing else changes: the same guards, parameters, responses and errors. The admin panel stays on `/admin/tenants/:tenantId`, which addresses tenants by id (D-051). The web routes (`/:tenantSlug/...`) are not API routes and stay as they are.
+- **Consequences:** The routes read as plural collections with nested resources, the usual REST shape. No client outside this repository uses the API yet, so the rename needs no v2 (D-018). The logs of features 5–10 describe the routes as they were then (`/t/...`).

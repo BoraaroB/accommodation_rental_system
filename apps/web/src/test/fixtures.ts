@@ -1,6 +1,6 @@
 import type { ListingDto, Page, PublicTenant } from '@ars/shared';
 
-/** A portal as `GET /t/:tenantSlug` returns it. */
+/** A portal as `GET /tenants/:tenantSlug` returns it. */
 export function aTenant(overrides: Partial<PublicTenant> = {}): PublicTenant {
   return {
     slug: 'adriatic',

@@ -16,7 +16,7 @@ export const tenantsApi = baseApi.injectEndpoints({
     }),
     /** One portal's name and branding. */
     getTenant: build.query<PublicTenant, string>({
-      query: (tenantSlug) => `/t/${tenantSlug}`,
+      query: (tenantSlug) => `/tenants/${tenantSlug}`,
       argSchema: tenantSlugSchema,
       responseSchema: publicTenantSchema,
     }),

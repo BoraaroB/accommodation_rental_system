@@ -14,7 +14,7 @@ import { BookingsService } from './bookings.service.js';
 
 /** The host panel's bookings: read-only, since bookings come from the data. */
 @UseGuards(TenantGuard, PermissionsGuard)
-@Controller('t/:tenantSlug/host/bookings')
+@Controller('tenants/:tenantSlug/host/bookings')
 export class BookingsController {
   constructor(private readonly bookings: BookingsService) {}
 

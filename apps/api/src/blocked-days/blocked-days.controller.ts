@@ -30,7 +30,7 @@ import { BlockedDaysService } from './blocked-days.service.js';
 
 /** The host calendar of one listing: its blocked days, `[from, to)` at a time. */
 @UseGuards(TenantGuard, PermissionsGuard)
-@Controller('t/:tenantSlug/host/listings/:id/blocked-days')
+@Controller('tenants/:tenantSlug/host/listings/:id/blocked-days')
 export class BlockedDaysController {
   constructor(private readonly blockedDays: BlockedDaysService) {}
 

@@ -38,7 +38,7 @@ describe('Access: who you are vs what you may do (e2e)', () => {
   const ids: Record<string, string> = {};
   const tokens: Record<string, string> = {};
 
-  const tenantRoute = (slug: string) => `/api/v1/t/${slug}/access-check`;
+  const tenantRoute = (slug: string) => `/api/v1/tenants/${slug}/access-check`;
 
   async function signIn(name: string): Promise<string> {
     const res = await request(app.getHttpServer())

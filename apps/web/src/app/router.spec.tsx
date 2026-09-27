@@ -28,7 +28,7 @@ describe('router', () => {
   });
 
   it('renders the host panel inside the portal', async () => {
-    stubApi({ 'GET /t/adriatic': aTenant() });
+    stubApi({ 'GET /tenants/adriatic': aTenant() });
     renderRoute('/adriatic/host');
     expect(
       await screen.findByRole('link', { name: 'Adriatic Stays' }),
@@ -50,7 +50,7 @@ describe('router', () => {
   });
 
   it('keeps the layout when a page inside it fails', async () => {
-    stubApi({ 'GET /t/adriatic': aTenant() });
+    stubApi({ 'GET /tenants/adriatic': aTenant() });
     renderRoute('/adriatic', [
       {
         path: '/:tenantSlug',
