@@ -1,7 +1,7 @@
 # Feature 10a — Tenant route prefix
 
 - **Branch:** `refactor/tenant-routes`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #21, 2026-09-27
 
 ## Goal and scope
 
@@ -42,4 +42,15 @@ A change of plan requested by the repository owner between features 10 and 11: t
 
 ## Commit message
 
-Not committed yet.
+One commit on `refactor/tenant-routes`, merged into `main` by merge commit `b28bf9b` (PR #21).
+
+`fb1d638`:
+
+```
+refactor(api): move tenant routes under /tenants/:tenantSlug
+
+- Portal and host routes move from /api/v1/t/:tenantSlug to /tenants/:tenantSlug
+- TenantsController takes the tenants prefix: the list and one portal
+- Web portal endpoints, API unit/e2e and web tests use the new paths
+- D-064; plan, architecture, README and API rules updated
+```

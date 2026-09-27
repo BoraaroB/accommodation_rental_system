@@ -1,10 +1,10 @@
 # Progress
 
 - **Last updated:** 2026-09-27
-- **Current feature:** 10a — Tenant route prefix (`refactor/tenant-routes`), a change of plan between features 10 and 11 ([log](features/10a-tenant-routes.md), D-064)
-- **Current step:** done – awaiting commit
-- **Next step:** after 10a is merged: feature 11 — Web auth (`feat/web-auth`): decide the open question on the sign-in pages, restate the scope, verify the docs, show the design, then set it to `in progress` with its checklist and open `docs/features/11-web-auth.md`
-- **Blocked / waiting on:** the repository owner: the branch `refactor/tenant-routes`, the commit, the PR and its merge; then the go-ahead for feature 11 and the branch `feat/web-auth` created from an up-to-date `main`
+- **Current feature:** none — feature 10a (tenant route prefix, D-064) is merged; feature 11 has not started
+- **Current step:** —
+- **Next step:** Feature 11 — Web auth (`feat/web-auth`): decide the open question on the sign-in pages, restate the scope, verify the docs, show the design, then set it to `in progress` with its checklist and open `docs/features/11-web-auth.md`
+- **Blocked / waiting on:** the repository owner: the post-merge PR `docs/feature-10a-merged` (these docs) merged into `main`, then the go-ahead for feature 11 and the branch `feat/web-auth` created from an up-to-date `main`
 
 ## Rules
 
@@ -20,33 +20,25 @@
 
 Statuses: `not started` · `in progress` · `done – awaiting commit` · `committed` · `PR merged`
 
-| #   | Feature                  | Branch                   | Status                 | PR  | Done       |
-| --- | ------------------------ | ------------------------ | ---------------------- | --- | ---------- |
-| 1   | Repo setup               | `chore/repo-setup`       | PR merged              | #1  | 2026-09-24 |
-| 2   | API bootstrap            | `feat/api-bootstrap`     | PR merged              | #3  | 2026-09-24 |
-| 3   | Database schema          | `feat/db-schema`         | PR merged              | #5  | 2026-09-24 |
-| 4   | Database seed            | `feat/db-seed`           | PR merged              | #7  | 2026-09-24 |
-| 5   | API auth                 | `feat/api-auth`          | PR merged              | #9  | 2026-09-25 |
-| 6   | API portal (public)      | `feat/api-portal`        | PR merged              | #11 | 2026-09-25 |
-| 7   | API host panel           | `feat/api-host`          | PR merged              | #13 | 2026-09-25 |
-| 8   | API admin panel          | `feat/api-admin`         | PR merged              | #15 | 2026-09-25 |
-| 9   | Web bootstrap            | `feat/web-bootstrap`     | PR merged              | #17 | 2026-09-26 |
-| 10  | Web portal               | `feat/web-portal`        | PR merged              | #19 | 2026-09-27 |
-| 10a | Tenant route prefix      | `refactor/tenant-routes` | done – awaiting commit |     |            |
-| 11  | Web auth                 | `feat/web-auth`          | not started            |     |            |
-| 12  | Web host panel           | `feat/web-host`          | not started            |     |            |
-| 13  | Web admin panel          | `feat/web-admin`         | not started            |     |            |
-| 14  | Docker                   | `chore/docker`           | not started            |     |            |
-| 15  | Final documentation pass | `docs/final-pass`        | not started            |     |            |
+| #   | Feature                  | Branch                   | Status      | PR  | Done       |
+| --- | ------------------------ | ------------------------ | ----------- | --- | ---------- |
+| 1   | Repo setup               | `chore/repo-setup`       | PR merged   | #1  | 2026-09-24 |
+| 2   | API bootstrap            | `feat/api-bootstrap`     | PR merged   | #3  | 2026-09-24 |
+| 3   | Database schema          | `feat/db-schema`         | PR merged   | #5  | 2026-09-24 |
+| 4   | Database seed            | `feat/db-seed`           | PR merged   | #7  | 2026-09-24 |
+| 5   | API auth                 | `feat/api-auth`          | PR merged   | #9  | 2026-09-25 |
+| 6   | API portal (public)      | `feat/api-portal`        | PR merged   | #11 | 2026-09-25 |
+| 7   | API host panel           | `feat/api-host`          | PR merged   | #13 | 2026-09-25 |
+| 8   | API admin panel          | `feat/api-admin`         | PR merged   | #15 | 2026-09-25 |
+| 9   | Web bootstrap            | `feat/web-bootstrap`     | PR merged   | #17 | 2026-09-26 |
+| 10  | Web portal               | `feat/web-portal`        | PR merged   | #19 | 2026-09-27 |
+| 10a | Tenant route prefix      | `refactor/tenant-routes` | PR merged   | #21 | 2026-09-27 |
+| 11  | Web auth                 | `feat/web-auth`          | not started |     |            |
+| 12  | Web host panel           | `feat/web-host`          | not started |     |            |
+| 13  | Web admin panel          | `feat/web-admin`         | not started |     |            |
+| 14  | Docker                   | `chore/docker`           | not started |     |            |
+| 15  | Final documentation pass | `docs/final-pass`        | not started |     |            |
 
 ## Current feature checklist
 
-Feature 10a — Tenant route prefix:
-
-- [x] Scope agreed with the repository owner (D-064)
-- [x] API controllers under `tenants/:tenantSlug`, `TenantsController` with the `tenants` prefix
-- [x] Web endpoints, API and web tests
-- [x] Plan, architecture, decisions, README and API rules
-- [x] lint, typecheck, unit tests, e2e, build, format check
-- [x] Review: no blocking findings; four documentation nits fixed (D-064 and D-006 status, admin route params and the 10a row in the plan)
-- [ ] Commit, PR and merge (repository owner)
+No feature in progress. The checklist of the next feature is added when it starts; the history of finished features is in [features/](features/).
