@@ -1,7 +1,7 @@
 # Feature 10 — Web portal
 
 - **Branch:** `feat/web-portal`
-- **Status:** done – awaiting commit (reopened once after the owner's browser review: UI on shadcn/ui)
+- **Status:** PR merged — #19, 2026-09-27 (reopened once before the commit, after the owner's browser review: UI on shadcn/ui)
 
 ## Goal and scope
 
@@ -146,4 +146,18 @@ Manual (API and dev server running, headless Chrome screenshots at 375 px and 12
 
 ## Commit message
 
-_Not committed yet._
+One commit on `feat/web-portal`, merged into `main` by merge commit `96df924` (PR #19).
+
+`560ad91`:
+
+```
+feat(web): add the tenant portal with URL filters on shadcn/ui
+
+- Add the landing page and each portal's home in its tenant branding, with a way back to all portals
+- Keep search, price filter, sort and page in the URL, parsed with listingQuerySchema
+- Add the listing detail with the stay total and an availability calendar in UTC
+- Build the UI on shadcn/ui with Base UI, react-day-picker, Sonner and lucide-react
+- Test pages through the router against a stubbed fetch (D-059)
+```
+
+Follow-up in the post-merge PR: git on macOS ignores case, so the commit kept six UI kit files under their old names (`Badge.tsx`, `Button.tsx`, `Card.tsx`, `Field.tsx`, `Input.tsx`, `Skeleton.tsx`) while the code imports `badge`, `button`, `card`, `field`, `input` and `skeleton`. It worked on macOS but would fail on a case-sensitive file system (Linux, Docker); the six files are renamed to lowercase with `git mv`.
