@@ -152,52 +152,64 @@ The host panel (feature 7) reuses them: blocking checks the range with the same 
 
 ## Web structure
 
-`apps/web/src`, organised by feature with conventional folder names ([D-058](decisions.md#d-058-the-web-app-is-organised-by-feature-with-conventional-folder-names)). Feature 9 lays the foundation; feature 10 adds the landing page and the portal; features 11–13 add sign-in and the panels.
+`apps/web/src`, organised by feature with conventional folder names ([D-058](decisions.md#d-058-the-web-app-is-organised-by-feature-with-conventional-folder-names)). Feature 9 lays the foundation; feature 10 adds the landing page and the portal; feature 11 adds sign-in and the role checks; features 12–13 add the panels.
 
 ```
-main.tsx          root: error hooks, Redux provider, router
-app/              router.ts (all routes), layouts/ (Root, Portal, Host, Admin)
-pages/            route components: LandingPage, PortalHomePage, ListingDetailPage, NotFoundPage, errors/
+main.tsx          root: error hooks, Redux provider, router (RouterProvider from react-router/dom)
+app/              router.ts (all routes), layouts/ (Root, Site, Portal, Host, Admin)
+pages/            route components: LandingPage, LoginPage, RegisterPage, PortalHomePage,
+                  ListingDetailPage, NotFoundPage, errors/
 features/<name>/  api.ts (injected endpoints), components/, hooks/ — tenants (portals, branding),
-                  listings (URL filters, search, cards, availability); auth, host, admin follow
+                  listings (URL filters, search, cards, availability), auth (sign-in, role checks,
+                  account menu); host, admin follow
 components/       shared components: ui/ (the UI kit: shadcn/ui on Base UI), AvailabilityCalendar,
                   DateRangePicker, Pager
 hooks/            hooks shared by several features: useTenantSlug, useMediaQuery
-store/            makeStore (baseApi + ui slice + rtkErrorMiddleware), typed hooks; the auth slice comes with feature 11
+store/            makeStore (baseApi + auth and ui slices + auth listener + rtkErrorMiddleware), typed hooks
 api/              baseApi (one createApi), errors.ts (getErrorMessage, getRequestId)
 config/           env.ts: the only module that reads import.meta.env, validated with zod
-lib/              logger (reportError: the single error-reporting hook), utils (cn), format (money, dates, Intl in UTC)
+lib/              logger (reportError: the single error-reporting hook), utils (cn), format (money, dates, Intl in UTC),
+                  tokenStorage (the access token in localStorage)
 styles/           tokens.css (the shadcn theme: CSS variables + @theme inline), index.css
 test/             Vitest setup, the fetch stub (apiStub), fixtures and render helpers
 ```
 
 - A page composes feature components. Code used by more than one feature goes into the shared folders, which never import from `features/` or `pages/`.
 - `api/baseApi.ts`: features inject their endpoints; response schemas are checked outside production, and a mismatch becomes a normal error.
-- `components/ui` is **shadcn/ui on Base UI** ([D-062](decisions.md#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the CLI (`npx shadcn add <name>`, configured by `components.json`) copies each component's source here, and it is ours to adapt. Generated: `button`, `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, plus `separator` and `textarea` (used by `field` and `input-group`). Our own: `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state`, `error-boundary`. Design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first; icons from lucide-react; links styled as buttons are router `Link`s with `buttonVariants`.
+- `components/ui` is **shadcn/ui on Base UI** ([D-062](decisions.md#d-062-the-ui-kit-is-shadcnui-on-base-ui)): the CLI (`npx shadcn add <name>`, configured by `components.json`) copies each component's source here, and it is ours to adapt. Generated: `button` (plus an `onPrimary` variant for the portal header), `input`, `label`, `field`, `input-group`, `select`, `combobox`, `popover`, `calendar` (react-day-picker), `sheet`, `pagination`, `card`, `badge`, `skeleton`, `empty`, `sonner`, `dropdown-menu` (plus `DropdownMenuLinkItem` on Base UI's `Menu.LinkItem`), plus `separator` and `textarea` (used by `field` and `input-group`). Our own: `form-field` (label, hint and error wired to the control), `empty-state`, `error-state`, `query-state`, `error-boundary`. Design tokens only ([D-056](decisions.md#d-056-colours-come-only-from-design-tokens)), mobile-first; icons from lucide-react; links styled as buttons are router `Link`s with `buttonVariants`.
 
 **Routes:**
 
-| Route                       | Page / layout                      | Who (from feature 11) |
-| --------------------------- | ---------------------------------- | --------------------- |
-| `/`                         | `LandingPage`: every portal        | everyone              |
-| `/:tenantSlug`              | `PortalHomePage` in `PortalLayout` | everyone              |
-| `/:tenantSlug/listings/:id` | `ListingDetailPage`                | everyone              |
-| `/:tenantSlug/host/...`     | `HostLayout` inside the portal     | host of that tenant   |
-| `/admin/...`                | `AdminLayout`                      | superadmin            |
-| `*`                         | —                                  | NotFound              |
+| Route                       | Page / layout                                  | Who                              |
+| --------------------------- | ---------------------------------------------- | -------------------------------- |
+| `/`                         | `LandingPage` in `SiteLayout`: every portal    | everyone                         |
+| `/login`, `/register`       | `LoginPage`, `RegisterPage` in `SiteLayout`    | signed out (others are sent on)  |
+| `/:tenantSlug`              | `PortalHomePage` in `PortalLayout`             | everyone                         |
+| `/:tenantSlug/listings/:id` | `ListingDetailPage`                            | everyone                         |
+| `/:tenantSlug/host/...`     | `RequireHost` → `HostLayout` inside the portal | hosts of that tenant, superadmin |
+| `/admin/...`                | `RequireSuperadmin` → `AdminLayout`            | superadmin                       |
+| `*`                         | —                                              | NotFound                         |
 
-`admin` is a reserved tenant slug, and React Router ranks the static segment first, so `/admin` never reaches a portal.
+`admin`, `login` and `register` are reserved tenant slugs, and React Router ranks static segments first, so they never reach a portal.
+
+**Auth (feature 11, [D-065](decisions.md#d-065-one-global-sign-in-page)):**
+
+- One sign-in page, `/login`, and one registration page, `/register`, for every portal and both panels. `?redirect=` carries the page to return to, accepted only as a path inside the app (`redirectPathSchema`). Without it, `postSignInDestination` sends a superadmin to `/admin`, the host of one tenant to its host panel, the host of several to a list of their host panels, anyone else to `/`. Registration signs in straight away.
+- Redux keeps only the token (`authSlice`); `tokenStorage` keeps it in `localStorage`, and the auth listener saves and clears it and drops every cached response on sign-out. `prepareHeaders` sends it as `Authorization: Bearer`. The profile and rights come from `GET /auth/me` (`useCurrentUser`), for UI gating only ([D-007](decisions.md#d-007-roles-are-not-in-the-token)).
+- `RequireSuperadmin` and `RequireHost` are pathless parents of the protected routes: signed out → `/login?redirect=<page>`; signed in without the rights → the 403 page (`AccessDenied`). `access.ts` mirrors the API's `ROLE_PERMISSIONS`: hosts in their own tenants, the superadmin everywhere.
+- `rtkErrorMiddleware` signs the user out on a 401 while signed in (an expired token), with a toast.
+- `AccountMenu` sits in every header: "Sign in" when signed out; otherwise the user, their panels and "Sign out", which leaves the page (with `flushSync`) before the token is dropped.
 
 **Errors:**
 
 - A root boundary shows a full-page fallback. Each layout's pages sit in a pathless content route whose boundary replaces only the page ([D-054](decisions.md#d-054-a-layouts-error-boundary-sits-on-a-pathless-content-route)). The `ErrorBoundary` class protects single widgets.
 - Request errors are shown by `QueryState` (loading → `Skeleton`, error → `ErrorState` with the request id and Retry, empty → `EmptyState`).
-- `rtkErrorMiddleware` shows a Sonner toast for 403, 5xx and network errors ([D-063](decisions.md#d-063-toasts-are-sonner-outside-redux)); the `Toaster` sits in `RootLayout`.
+- `rtkErrorMiddleware` shows a Sonner toast for 403, 5xx and network errors, and signs out on a 401 while signed in ([D-063](decisions.md#d-063-toasts-are-sonner-outside-redux)); the `Toaster` sits in `RootLayout`.
 - Every error is reported once through `reportError` ([D-055](decisions.md#d-055-every-client-error-is-reported-once)).
 
 **Portal (feature 10):**
 
-- `PortalLayout` loads the tenant (`GET /tenants/:tenantSlug`) and sets its primary colour as `--primary` and `--ring` on the document while the portal is shown (`useBrandColor`), so every token utility follows the tenant — including the popups the kit renders into `<body>`. The header, in the tenant's colour, shows the name and logo and an "All portals" link back to `/`; the footer shows the contact e-mail. An unknown tenant, or an address that is not a slug (not sent to the API), shows "Portal not found". The landing page has its own navbar.
+- `PortalLayout` loads the tenant (`GET /tenants/:tenantSlug`) and sets its primary colour as `--primary` and `--ring` on the document while the portal is shown (`useBrandColor`), so every token utility follows the tenant — including the popups the kit renders into `<body>`. The header, in the tenant's colour, shows the name and logo and an "All portals" link back to `/`; the footer shows the contact e-mail. An unknown tenant, or an address that is not a slug (not sent to the API), shows "Portal not found". The landing page and the sign-in pages share the platform's navbar (`SiteLayout`).
 - Filters, sort and page live in the URL ([D-017](decisions.md#d-017-listing-filters-live-in-the-url)). `useListingFilters` parses them with `listingQuerySchema`, drops invalid values and writes changes back, always to page 1. `useGetListingsQuery({ tenantSlug, query })` caches by exactly those arguments, so back and forward are instant.
 - The search and price forms start from the URL and are remounted when it changes, so a removed filter also leaves the controls.
 - The search bar — a searchable city combobox, one date range picker (`DateRangePicker`: Popover + Calendar in UTC) and a guests select — collapses to a summary on phones; the price filter (euros, with a € prefix) sits in a sidebar on desktop and in a sheet on phones ([D-061](decisions.md#d-061-the-filter-drawer-is-the-ui-kits-sheet)); active filters are removable chips; sort is a select.

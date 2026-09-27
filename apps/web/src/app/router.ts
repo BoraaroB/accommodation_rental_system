@@ -1,14 +1,21 @@
 import { createBrowserRouter, type RouteObject } from 'react-router';
+import {
+  RequireHost,
+  RequireSuperadmin,
+} from '../features/auth/components/RequireRole';
 import { LandingPage } from '../pages/LandingPage';
 import { ListingDetailPage } from '../pages/ListingDetailPage';
+import { LoginPage } from '../pages/LoginPage';
 import { NotFoundPage } from '../pages/NotFoundPage';
 import { PortalHomePage } from '../pages/PortalHomePage';
+import { RegisterPage } from '../pages/RegisterPage';
 import { RootErrorBoundary } from '../pages/errors/RootErrorBoundary';
 import { RouteErrorState } from '../pages/errors/RouteErrorState';
 import { AdminLayout } from './layouts/AdminLayout';
 import { HostLayout } from './layouts/HostLayout';
 import { PortalLayout } from './layouts/PortalLayout';
 import { RootLayout } from './layouts/RootLayout';
+import { SiteLayout } from './layouts/SiteLayout';
 
 /**
  * A pathless route around a layout's pages. Its error boundary replaces only
@@ -19,8 +26,9 @@ export function contentBoundary(children: RouteObject[]): RouteObject {
 }
 
 /**
- * Browser routes. The auth, host and admin features add their pages; the
- * host and admin groups get role checks with sign-in.
+ * Browser routes. One sign-in page serves every portal and both panels
+ * (D-065); the host and admin panels check the role and send a signed-out
+ * user to sign in. The host and admin features add their pages.
  */
 // Possible improvement (not in the plan): load the pages with the routes'
 // `lazy`, so the first visit downloads less (the build warns above 500 kB).
@@ -30,13 +38,29 @@ export const routes: RouteObject[] = [
     Component: RootLayout,
     ErrorBoundary: RootErrorBoundary,
     children: [
-      // The demo's landing page: every portal.
-      { index: true, Component: LandingPage },
-      // Platform admin panel (superadmin). `admin` is a reserved tenant slug.
+      // The platform's pages: the landing page (every portal) and sign-in.
+      // `login` and `register` are reserved tenant slugs.
       {
-        path: 'admin',
-        Component: AdminLayout,
-        children: [contentBoundary([])],
+        Component: SiteLayout,
+        children: [
+          contentBoundary([
+            { index: true, Component: LandingPage },
+            { path: 'login', Component: LoginPage },
+            { path: 'register', Component: RegisterPage },
+          ]),
+        ],
+      },
+      // Platform admin panel (superadmin). `admin` is a reserved tenant slug.
+      // The role check is a pathless parent, so it covers every admin page.
+      {
+        Component: RequireSuperadmin,
+        children: [
+          {
+            path: 'admin',
+            Component: AdminLayout,
+            children: [contentBoundary([])],
+          },
+        ],
       },
       // A tenant's public portal; its host panel (hosts of this tenant) nests inside.
       {
@@ -47,9 +71,14 @@ export const routes: RouteObject[] = [
             { index: true, Component: PortalHomePage },
             { path: 'listings/:id', Component: ListingDetailPage },
             {
-              path: 'host',
-              Component: HostLayout,
-              children: [contentBoundary([])],
+              Component: RequireHost,
+              children: [
+                {
+                  path: 'host',
+                  Component: HostLayout,
+                  children: [contentBoundary([])],
+                },
+              ],
             },
           ]),
         ],

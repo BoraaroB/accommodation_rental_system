@@ -1,6 +1,6 @@
 import { tenantSlugSchema } from '@ars/shared';
 import { skipToken } from '@reduxjs/toolkit/query';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, LayoutDashboardIcon } from 'lucide-react';
 import { Link, Outlet } from 'react-router';
 import {
   getErrorMessage,
@@ -11,6 +11,10 @@ import { buttonVariants } from '../../components/ui/button';
 import { EmptyState } from '../../components/ui/empty-state';
 import { ErrorState } from '../../components/ui/error-state';
 import { Skeleton } from '../../components/ui/skeleton';
+import { canUseHostPanel } from '../../features/auth/access';
+import { AccountMenu } from '../../features/auth/components/AccountMenu';
+import { useCurrentUser } from '../../features/auth/hooks/useCurrentUser';
+import { hostPanelPath } from '../../features/auth/redirects';
 import { useGetTenantQuery } from '../../features/tenants/api';
 import { TenantLogo } from '../../features/tenants/components/TenantLogo';
 import { useBrandColor } from '../../features/tenants/hooks/useBrandColor';
@@ -18,7 +22,8 @@ import { useTenantSlug } from '../../hooks/useTenantSlug';
 
 /**
  * A tenant's public portal in its branding: the header takes the tenant's
- * primary colour, name and logo. The host panel nests inside it.
+ * primary colour, name and logo, and has the account menu and, for the
+ * tenant's hosts, a link to the host panel. The host panel nests inside it.
  */
 export function PortalLayout() {
   const tenantSlug = useTenantSlug();
@@ -27,6 +32,7 @@ export function PortalLayout() {
   const tenant = useGetTenantQuery(isSlug ? tenantSlug : skipToken);
   const notFound = !isSlug || getErrorStatus(tenant.error) === 404;
   useBrandColor(tenant.data?.primaryColor);
+  const { user } = useCurrentUser();
 
   let content = <Outlet />;
   if (notFound) {
@@ -68,13 +74,22 @@ export function PortalLayout() {
           ) : (
             <Skeleton className="h-6 w-40 bg-primary-foreground/20" />
           )}
-          <Link
-            to="/"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-primary-foreground/85 hover:bg-primary-foreground/10 hover:text-primary-foreground"
-          >
-            <ArrowLeftIcon aria-hidden="true" className="size-4" />
-            All portals
-          </Link>
+          <div className="flex shrink-0 items-center gap-1">
+            <Link to="/" className={buttonVariants({ variant: 'onPrimary' })}>
+              <ArrowLeftIcon aria-hidden="true" className="size-4" />
+              <span className="sr-only sm:not-sr-only">All portals</span>
+            </Link>
+            {tenant.data && user && canUseHostPanel(user, tenantSlug) && (
+              <Link
+                to={hostPanelPath(tenantSlug)}
+                className={buttonVariants({ variant: 'onPrimary' })}
+              >
+                <LayoutDashboardIcon aria-hidden="true" className="size-4" />
+                <span className="sr-only sm:not-sr-only">Host panel</span>
+              </Link>
+            )}
+            <AccountMenu onBrand />
+          </div>
         </div>
       </header>
       <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-6">

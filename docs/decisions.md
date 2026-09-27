@@ -219,7 +219,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-030: RTK Query and Redux Toolkit, no Zustand
 
-- **Status:** Implemented (feature 9) — the store with `baseApi` and the UI slice; the auth slice follows in feature 11
+- **Status:** Implemented (features 9 and 11) — the store with `baseApi` and the UI slice (feature 9), the auth slice (feature 11)
 - **Decision:** Server state in RTK Query (one `createApi`, `injectEndpoints` per feature, tag invalidation); client state in two Redux Toolkit slices (auth token, UI). No second state library.
 - **Consequences:** One mental model for all state; filters stay in the URL ([D-017](#d-017-listing-filters-live-in-the-url)).
 
@@ -526,3 +526,16 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** The portal and host routes were under `/api/v1/t/:tenantSlug/...`, while the list of the same portals is `GET /tenants` and the admin panel uses `/admin/tenants/:tenantId`. One resource had two prefixes, and `t` does not say what it is. The repository owner asked for consistent routes.
 - **Decision:** Every tenant route moves to `/api/v1/tenants/:tenantSlug/...` (`GET /tenants/:tenantSlug`, `/tenants/:tenantSlug/cities`, `/tenants/:tenantSlug/listings[/:id[/availability]]`, `/tenants/:tenantSlug/host/...`). `TenantsController` takes the `tenants` prefix, so `GET /tenants` and `GET /tenants/:tenantSlug` are the collection and one of its items. Nothing else changes: the same guards, parameters, responses and errors. The admin panel stays on `/admin/tenants/:tenantId`, which addresses tenants by id (D-051). The web routes (`/:tenantSlug/...`) are not API routes and stay as they are.
 - **Consequences:** The routes read as plural collections with nested resources, the usual REST shape. No client outside this repository uses the API yet, so the rename needs no v2 (D-018). The logs of features 5–10 describe the routes as they were then (`/t/...`).
+
+## D-065: One global sign-in page
+
+- **Status:** Implemented (feature 11) — replaces the plan's per-portal `/:tenantSlug/login` and `/:tenantSlug/register` and the separate `/admin/login`; approved by the repository owner
+- **Context:** One account works on every portal ([D-003](#d-003-global-client-identity)), and roles come from `GET /auth/me` per tenant ([D-007](#d-007-roles-are-not-in-the-token)). The plan still gave every portal its own sign-in page and the superadmin a separate one, all calling the same endpoint. Products with a global identity (Airbnb, Booking, Shopify, Atlassian, GitHub) sign in once and then route by role or tenant; per-tenant sign-in pages belong to products where each tenant has its own accounts or its own SSO.
+- **Decision:**
+  - The web app has one `/login` and one `/register` (`login` and `register` are reserved tenant slugs, [D-028](#d-028-tenant-slugs-are-kebab-case-with-reserved-words)). They carry the page to return to in `?redirect=`, which `redirectPathSchema` (`@ars/shared`) accepts only as a path inside the app: no `//host`, absolute URL, backslash or whitespace (an open redirect), and not the sign-in pages themselves.
+  - After sign-in the user goes to `redirect`; without one, a superadmin to `/admin`, the host of one tenant to `/{slug}/host`, the host of several tenants to a list of their host panels, anyone else to `/`. "Sign in" in a portal's header passes the current page; on the landing page it passes none, so hosts and the superadmin reach their panel.
+  - Registration signs in straight away with the same credentials and then follows the same rules.
+  - `RequireSuperadmin` and `RequireHost` (pathless parents in the router) send a signed-out user to `/login?redirect=<page>` and show a 403 page to a signed-in user without the rights. What the web app shows mirrors `ROLE_PERMISSIONS`: a host works in their own tenants, a superadmin in every tenant and the admin panel. It is UI gating only; the API checks every request.
+  - The token is the only auth state in Redux, kept in `localStorage`. A sign-out drops every cached response. A 401 while signed in (an expired token, a deleted user) signs the user out with a toast, and protected pages send them to sign in again.
+  - Signing out first leaves the page (to the portal home, or `/`) and only then drops the token; the navigation runs with `flushSync`, because React Router renders navigations as transitions and a protected page would otherwise see the sign-out first and redirect to sign-in. This needs `RouterProvider` from `react-router/dom`, which wires `flushSync` and is the one the React Router docs recommend in the browser.
+- **Consequences:** One place to sign in, the same for every role; the portal context survives through `redirect`. The sign-in page has no tenant branding. The API needed no change.

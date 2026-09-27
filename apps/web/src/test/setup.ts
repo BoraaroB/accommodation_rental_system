@@ -8,6 +8,8 @@ window.scrollTo = () => {};
 
 beforeEach(() => {
   resetApiStub();
+  // A store reads the kept token; every test starts signed out.
+  localStorage.clear();
 });
 
 // Vitest globals are off, so Testing Library cannot register its own cleanup.

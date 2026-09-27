@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { stubApi } from '../test/apiStub';
-import { aTenant } from '../test/fixtures';
+import { aTenant, aUser } from '../test/fixtures';
 import { renderRoute } from '../test/renderRoute';
 import { RootErrorBoundary } from '../pages/errors/RootErrorBoundary';
 import { PortalLayout } from './layouts/PortalLayout';
@@ -28,13 +28,18 @@ describe('router', () => {
   });
 
   it('renders the host panel inside the portal', async () => {
-    stubApi({ 'GET /tenants/adriatic': aTenant() });
-    renderRoute('/adriatic/host');
+    stubApi({
+      'GET /tenants/adriatic': aTenant(),
+      'GET /auth/me': aUser({
+        hostOf: [{ slug: 'adriatic', name: 'Adriatic Stays' }],
+      }),
+    });
+    renderRoute('/adriatic/host', { signedIn: true });
     expect(
       await screen.findByRole('link', { name: 'Adriatic Stays' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('navigation', { name: 'Host panel' }),
+      await screen.findByRole('navigation', { name: 'Host panel' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Listings' })).toHaveAttribute(
       'href',
@@ -42,22 +47,35 @@ describe('router', () => {
     );
   });
 
-  it('renders the admin layout on /admin, not a tenant portal', () => {
-    renderRoute('/admin');
+  it('renders the admin layout on /admin, not a tenant portal', async () => {
+    stubApi({ 'GET /auth/me': aUser({ isSuperadmin: true }) });
+    renderRoute('/admin', { signedIn: true });
     expect(
-      screen.getByRole('navigation', { name: 'Admin panel' }),
+      await screen.findByRole('navigation', { name: 'Admin panel' }),
     ).toBeInTheDocument();
   });
 
+  it.each(['/login', '/register'])(
+    'serves %s from the platform, not as a tenant portal',
+    (path) => {
+      renderRoute(path);
+      expect(
+        screen.getByRole('link', { name: 'Accommodation Rental System' }),
+      ).toHaveAttribute('href', '/');
+    },
+  );
+
   it('keeps the layout when a page inside it fails', async () => {
     stubApi({ 'GET /tenants/adriatic': aTenant() });
-    renderRoute('/adriatic', [
-      {
-        path: '/:tenantSlug',
-        Component: PortalLayout,
-        children: [contentBoundary([{ index: true, Component: Broken }])],
-      },
-    ]);
+    renderRoute('/adriatic', {
+      routes: [
+        {
+          path: '/:tenantSlug',
+          Component: PortalLayout,
+          children: [contentBoundary([{ index: true, Component: Broken }])],
+        },
+      ],
+    });
     expect(
       await screen.findByRole('link', { name: 'Adriatic Stays' }),
     ).toBeInTheDocument();
@@ -66,13 +84,15 @@ describe('router', () => {
   });
 
   it('shows the full-page fallback for an error outside every layout', () => {
-    renderRoute('/', [
-      {
-        path: '/',
-        ErrorBoundary: RootErrorBoundary,
-        children: [{ index: true, Component: Broken }],
-      },
-    ]);
+    renderRoute('/', {
+      routes: [
+        {
+          path: '/',
+          ErrorBoundary: RootErrorBoundary,
+          children: [{ index: true, Component: Broken }],
+        },
+      ],
+    });
     expect(
       screen.getByRole('heading', { name: 'Something went wrong' }),
     ).toBeInTheDocument();

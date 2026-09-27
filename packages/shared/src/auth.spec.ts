@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { emailSchema, loginSchema, registerSchema } from './auth.js';
+import {
+  emailSchema,
+  loginSchema,
+  redirectPathSchema,
+  registerSchema,
+} from './auth.js';
 
 const registration = {
   email: 'guest@example.com',
@@ -60,5 +65,32 @@ describe('loginSchema', () => {
     expect(
       loginSchema.parse({ email: ' Guest@Example.com', password: 'x' }),
     ).toEqual({ email: 'guest@example.com', password: 'x' });
+  });
+});
+
+describe('redirectPathSchema', () => {
+  it.each([
+    '/',
+    '/adriatic',
+    '/adriatic/host?tab=bookings',
+    '/adriatic/listings/abc?from=2026-10-01&to=2026-10-04',
+    '/login-help',
+  ])('accepts the path %s', (path) => {
+    expect(redirectPathSchema.safeParse(path).success).toBe(true);
+  });
+
+  it.each([
+    ['an empty value', ''],
+    ['a relative path', 'adriatic'],
+    ['a protocol-relative URL', '//evil.example'],
+    ['an absolute URL', 'https://evil.example'],
+    ['a backslash, read as a slash', '/\\evil.example'],
+    ['a tab, dropped by browsers', '/\t/evil.example'],
+    ['the sign-in page', '/login'],
+    ['the sign-in page with a query', '/login?redirect=/admin'],
+    ['the registration page', '/register'],
+    ['the sign-in page in capitals', '/Login'],
+  ])('rejects %s', (_case, path) => {
+    expect(redirectPathSchema.safeParse(path).success).toBe(false);
   });
 });

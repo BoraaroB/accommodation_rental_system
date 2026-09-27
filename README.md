@@ -84,6 +84,8 @@ npm run dev -w apps/web           # http://localhost:5173, with the API running
 
 Open `/` for the list of portals, then a portal such as `/adriatic`: search by city, dates and guests, filter by price, sort, and open a listing to see its availability calendar. Filters live in the URL, so a filtered page can be shared or bookmarked.
 
+One sign-in page serves every portal and both panels: `/login` (and `/register`, which creates a client account). "Sign in" in a portal's header returns to that page afterwards; otherwise a superadmin goes to `/admin`, a host to their portal's host panel (`/adriatic/host`) and a client to `/`. The host panel is open to the tenant's hosts and the superadmin, the admin panel to the superadmin; a signed-out visitor is sent to sign in and back ([D-065](docs/decisions.md#d-065-one-global-sign-in-page)).
+
 The dev server forwards `/api` to `API_PROXY_TARGET` (the API started above), so the browser calls the API on the web app's own origin. Every variable in `apps/web/.env.example` is required: the app checks `VITE_API_BASE_URL` when it loads, and the dev server checks `WEB_PORT` and `API_PROXY_TARGET` when it starts.
 
 ## Commands

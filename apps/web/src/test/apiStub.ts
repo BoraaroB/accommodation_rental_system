@@ -4,7 +4,7 @@ import { env } from '../config/env';
 /**
  * Stubbed responses by `"<METHOD> <path>"`, the path relative to the API base
  * URL. A value is a body (sent as 200 JSON), a `Response`, or a function of
- * the request URL that returns either.
+ * the request URL (and the request, e.g. for its headers) that returns either.
  */
 export type StubRoutes = Record<string, unknown>;
 
@@ -69,7 +69,8 @@ export function stubApi(routes: StubRoutes): StubbedApi {
         return jsonResponse(500, apiErrorBody(500, 'UNSTUBBED', route));
       }
       const handler = routes[route];
-      const result = typeof handler === 'function' ? handler(url) : handler;
+      const result =
+        typeof handler === 'function' ? handler(url, request) : handler;
       return result instanceof Response ? result : jsonResponse(200, result);
     },
   );
