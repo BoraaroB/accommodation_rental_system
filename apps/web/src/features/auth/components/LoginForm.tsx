@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { Link } from 'react-router';
 import { FormAlert } from '../../../components/FormAlert';
+import { PasswordInput } from '../../../components/PasswordInput';
 import { Button } from '../../../components/ui/button';
 import { FormField } from '../../../components/ui/form-field';
 import { Input } from '../../../components/ui/input';
@@ -55,10 +56,9 @@ export function LoginForm() {
         error={errors.password && 'Enter your password'}
       >
         {(control) => (
-          <Input
+          <PasswordInput
             {...control}
             {...register('password')}
-            type="password"
             autoComplete="current-password"
           />
         )}

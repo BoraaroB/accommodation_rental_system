@@ -4,6 +4,7 @@ import { useForm, type FieldError } from 'react-hook-form';
 import { Link } from 'react-router';
 import { getApiError } from '../../../api/errors';
 import { FormAlert } from '../../../components/FormAlert';
+import { PasswordInput } from '../../../components/PasswordInput';
 import { Button } from '../../../components/ui/button';
 import { FormField } from '../../../components/ui/form-field';
 import { Input } from '../../../components/ui/input';
@@ -112,10 +113,9 @@ export function RegisterForm() {
         error={passwordError(errors.password)}
       >
         {(control) => (
-          <Input
+          <PasswordInput
             {...control}
             {...register('password')}
-            type="password"
             autoComplete="new-password"
           />
         )}

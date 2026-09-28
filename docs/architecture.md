@@ -165,7 +165,7 @@ features/<name>/  api.ts (injected endpoints), components/, hooks/ — tenants (
                   account menu), host (listing table, editor, blocking calendar, bookings),
                   admin (tenant table and deletion, tenant form, hosts)
 components/       shared components: ui/ (the UI kit: shadcn/ui on Base UI), AvailabilityCalendar,
-                  DateRangePicker, Pager, MoneyInput, FormAlert, EmptyPageState
+                  DateRangePicker, Pager, MoneyInput, PasswordInput, FormAlert, EmptyPageState
 hooks/            hooks shared by several features: useTenantSlug, useMediaQuery, useCalendarMonths
 store/            makeStore (baseApi + auth and ui slices + auth listener + rtkErrorMiddleware), typed hooks
 api/              baseApi (one createApi, cache tags), errors.ts (getErrorMessage, getRequestId),
@@ -203,7 +203,7 @@ test/             Vitest setup, the fetch stub (apiStub), fixtures and render he
 
 **Auth (feature 11, [D-065](decisions.md#d-065-one-global-sign-in-page)):**
 
-- One sign-in page, `/login`, and one registration page, `/register`, for every portal and both panels. `?redirect=` carries the page to return to, accepted only as a path inside the app (`redirectPathSchema`). Without it, `postSignInDestination` sends a superadmin to `/admin`, the host of one tenant to its host panel, the host of several to a list of their host panels, anyone else to `/`. Registration signs in straight away.
+- One sign-in page, `/login`, and one registration page, `/register`, for every portal and both panels. `?redirect=` carries the page to return to, accepted only as a path inside the app (`redirectPathSchema`). Without it, `postSignInDestination` sends a superadmin to `/admin`, the host of one tenant to its host panel, the host of several to a list of their host panels, anyone else to `/`. Registration signs in straight away. Every password field (sign-in, registration, the admin's host form) is a `PasswordInput`, with a button that shows and hides the password ([D-073](decisions.md#d-073-password-fields-have-a-showhide-toggle)).
 - Redux keeps only the token (`authSlice`); `tokenStorage` keeps it in `localStorage`, and the auth listener saves and clears it and drops every cached response on sign-out. `prepareHeaders` sends it as `Authorization: Bearer`. The profile and rights come from `GET /auth/me` (`useCurrentUser`), for UI gating only ([D-007](decisions.md#d-007-roles-are-not-in-the-token)).
 - `RequireSuperadmin` and `RequireHost` are pathless parents of the protected routes: signed out → `/login?redirect=<page>`; signed in without the rights → the 403 page (`AccessDenied`). `access.ts` mirrors the API's `ROLE_PERMISSIONS`: hosts in their own tenants, the superadmin everywhere.
 - `rtkErrorMiddleware` signs the user out on a 401 while signed in (an expired token), with a toast.

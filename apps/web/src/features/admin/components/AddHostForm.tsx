@@ -5,6 +5,7 @@ import { useForm, type FieldError } from 'react-hook-form';
 import { toast } from 'sonner';
 import { getApiError } from '../../../api/errors';
 import { FormAlert } from '../../../components/FormAlert';
+import { PasswordInput } from '../../../components/PasswordInput';
 import { Button } from '../../../components/ui/button';
 import { FormField } from '../../../components/ui/form-field';
 import { Input } from '../../../components/ui/input';
@@ -131,10 +132,9 @@ export function AddHostForm({ tenantId }: { tenantId: string }) {
           error={passwordError(errors.password)}
         >
           {(field) => (
-            <Input
+            <PasswordInput
               {...field}
               {...register('password')}
-              type="password"
               autoComplete="new-password"
             />
           )}
