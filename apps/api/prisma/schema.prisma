@@ -1,6 +1,6 @@
 // Database schema. camelCase in TypeScript, snake_case in Postgres (@map / @@map).
 // Constraints Prisma cannot express (CHECK, EXCLUDE) are hand-written SQL in the
-// initial migration. The connection URL lives in prisma.config.ts.
+// migrations. The connection URL lives in prisma.config.ts.
 
 generator client {
   provider            = "prisma-client"
@@ -133,12 +133,16 @@ model Listing {
 /// A stay of [checkIn, checkOut): the checkout day is free. Reaches its tenant
 /// through the listing.
 model Booking {
-  id        String        @id @default(uuid()) @db.Uuid
-  listingId String        @map("listing_id") @db.Uuid
-  checkIn   DateTime      @map("check_in") @db.Date
-  checkOut  DateTime      @map("check_out") @db.Date
-  guests    Int
-  status    BookingStatus
+  id         String        @id @default(uuid()) @db.Uuid
+  listingId  String        @map("listing_id") @db.Uuid
+  checkIn    DateTime      @map("check_in") @db.Date
+  checkOut   DateTime      @map("check_out") @db.Date
+  guests     Int
+  status     BookingStatus
+  /// The amount agreed when the booking was made, never recomputed from the
+  /// listing's current price: the nights times the listing's price per night
+  /// in the CSV (bookings_total_cents_check).
+  totalCents Int           @map("total_cents")
 
   listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 

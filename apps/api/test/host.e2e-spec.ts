@@ -166,9 +166,11 @@ describe('Host panel (e2e)', () => {
         listingRow(b.id, B1),
       ],
     });
-    const stay = (from: number, to: number) => ({
+    /** A stay booked at its listing's price in the fixture. */
+    const stay = (from: number, to: number, { pricePerNightCents } = L1) => ({
       checkIn: parseIsoDate(day(from)),
       checkOut: parseIsoDate(day(to)),
+      totalCents: (to - from) * pricePerNightCents,
     });
     await prisma.booking.createMany({
       data: [
@@ -196,7 +198,7 @@ describe('Host panel (e2e)', () => {
         {
           id: bookingIds.other,
           listingId: B1.id,
-          ...stay(5, 8),
+          ...stay(5, 8, B1),
           guests: 1,
           status: 'confirmed',
         },
@@ -564,6 +566,28 @@ describe('Host panel (e2e)', () => {
         listingTitle: L1.title,
         totalCents: 3 * L1.pricePerNightCents,
       });
+    });
+
+    it('keeps every booking’s total when the listing’s price changes', async () => {
+      try {
+        await call('patch', `${host(slugA)}/listings/${L1.id}`, 'hostA', {
+          ...keepL1,
+          pricePerNightCents: 2 * L1.pricePerNightCents,
+        }).expect(200);
+        const page = hostBookingPageSchema.parse((await bookings('')).body);
+        expect(page.items.map((item) => item.totalCents)).toEqual([
+          3 * L1.pricePerNightCents,
+          3 * L1.pricePerNightCents,
+          2 * L1.pricePerNightCents,
+        ]);
+      } finally {
+        await call(
+          'patch',
+          `${host(slugA)}/listings/${L1.id}`,
+          'hostA',
+          keepL1,
+        ).expect(200);
+      }
     });
 
     it.each([

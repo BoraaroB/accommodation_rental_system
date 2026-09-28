@@ -74,6 +74,7 @@ describe('database schema (e2e)', () => {
         checkOut: day(addDays(D, to)),
         guests: 2,
         status: 'confirmed',
+        totalCents: (to - from) * 12000,
         ...data,
       },
     });
@@ -172,6 +173,18 @@ describe('database schema (e2e)', () => {
         ).rejects.toThrow(constraint);
       },
     );
+
+    it('a booking with a negative total is rejected', async () => {
+      await expect(
+        createBooking(listingId, 42, 43, { totalCents: -1 }),
+      ).rejects.toThrow('bookings_total_cents_check');
+    });
+
+    it('a free stay is accepted', async () => {
+      await expect(
+        createBooking(listingId, 44, 45, { totalCents: 0 }),
+      ).resolves.toMatchObject({ listingId, totalCents: 0 });
+    });
 
     it('a one-night booking for one guest is accepted', async () => {
       await expect(

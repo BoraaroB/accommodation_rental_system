@@ -75,7 +75,8 @@ export const hostApi = baseApi.injectEndpoints({
       }),
       argSchema: listingArgsSchema.extend({ changes: listingUpdateSchema }),
       responseSchema: listingDtoSchema,
-      // The bookings show the listing's title and a total at its price (D-048).
+      // The bookings show the listing's title (D-048); their totals are stored
+      // and do not follow the price (D-074).
       invalidatesTags: (_result, error, { id }) =>
         error === undefined
           ? [

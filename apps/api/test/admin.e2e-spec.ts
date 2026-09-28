@@ -207,6 +207,7 @@ describe('Admin panel (e2e)', () => {
         checkOut: parseIsoDate(addDays(today(), 12)),
         guests: 2,
         status: 'confirmed',
+        totalCents: 20000,
       },
     });
     await prisma.blockedDay.create({
