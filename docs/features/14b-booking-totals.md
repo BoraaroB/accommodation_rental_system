@@ -1,7 +1,7 @@
 # Feature 14b — Booking totals
 
 - **Branch:** `feat/booking-total-snapshot`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #33, 2026-09-28
 
 ## Goal and scope
 
@@ -53,3 +53,18 @@ A change of plan asked for by the repository owner before feature 15. The host b
 ## Possible improvements (not in the plan)
 
 - None.
+
+## Commit message
+
+One commit on `feat/booking-total-snapshot`, merged into `main` by merge commit `65aa967` (PR #33).
+
+`64b6a89`:
+
+```
+feat(api): store each booking's total at the price it was booked at
+
+- bookings.total_cents (NOT NULL, CHECK >= 0) in a new migration
+- The seed writes it from the CSV: nights x the listing's CSV price
+- Host bookings return the stored total; a price edit keeps it
+- D-074 replaces D-048's total at the current price; docs updated
+```
