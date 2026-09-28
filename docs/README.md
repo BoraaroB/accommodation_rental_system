@@ -6,5 +6,5 @@
 | [implementation-plan.md](implementation-plan.md) | The full plan: stack, data model, availability, API, web, data loading, configuration, errors and logging, feature order               |
 | [architecture.md](architecture.md)               | How the pieces fit together: monorepo, data flow, request pipeline, tenant isolation                                                   |
 | [decisions.md](decisions.md)                     | Numbered decisions and assumptions (D-001, D-002, …) with context and consequences                                                     |
-| [progress.md](progress.md)                       | Live progress tracker: current feature and step, status of all 15 features                                                             |
+| [progress.md](progress.md)                       | Progress tracker: current feature and step, the status and pull request of every feature                                               |
 | [features/](features/)                           | One log per feature: scope, what was done, key files, verification, what was left out                                                  |
