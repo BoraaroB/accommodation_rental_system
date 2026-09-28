@@ -45,6 +45,7 @@ export class PrismaErrorRoutesController {
         checkOut: new Date(`${addDays(today(), 13)}T00:00:00.000Z`),
         guests: 2,
         status: 'confirmed',
+        totalCents: 36000,
       },
     });
   }

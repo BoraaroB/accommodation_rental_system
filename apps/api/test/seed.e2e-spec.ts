@@ -11,7 +11,11 @@ import {
   parseCsv,
   parseListingRow,
 } from '../prisma/seed/mappers.js';
-import { seed, type SeedCounts } from '../prisma/seed/seed.js';
+import {
+  seed,
+  withBookingTotals,
+  type SeedCounts,
+} from '../prisma/seed/seed.js';
 import { AppConfigModule } from '../src/core/config/config.module.js';
 import { DatabaseModule } from '../src/core/database/database.module.js';
 import { PrismaService } from '../src/core/database/prisma.service.js';
@@ -103,6 +107,21 @@ describe('seed (e2e)', () => {
       where: { id: LISTING_ID },
     });
     expect(listing.pricePerNightCents).toBe(EDITED_PRICE_CENTS);
+  });
+
+  it('stores every booking with its total at the CSV price, also after a price edit', async () => {
+    const stored = await prisma.booking.findMany({
+      where: { listing: { tenant: { slug: { in: SLUGS } } } },
+      select: { id: true, totalCents: true },
+    });
+    const expected = withBookingTotals(input.listings, input.bookings);
+
+    expect(new Map(stored.map((b) => [b.id, b.totalCents]))).toEqual(
+      new Map(expected.map((b) => [b.id, b.totalCents])),
+    );
+    // The listing whose price was edited has a booking, so its total above
+    // is the one at the CSV price, not at the edited one.
+    expect(expected.some((b) => b.listingId === LISTING_ID)).toBe(true);
   });
 
   it('rejects overlapping stays and then writes nothing', async () => {

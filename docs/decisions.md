@@ -386,14 +386,14 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-048: Host bookings carry the listing's title and a total at its current price
 
-- **Status:** Implemented (feature 7)
+- **Status:** Implemented (feature 7); the total at the listing's current price is replaced by [D-074](#d-074-a-booking-stores-its-total) (feature 14b)
 - **Context:** Challenge item 9: "Viewing bookings." The host table shows listing, dates, nights, guests, status and total. `BookingDto` has none of the listing's data, and bookings carry no price.
 - **Decision:**
   - `GET /tenants/:tenantSlug/host/bookings` returns `Page<HostBooking>`: `BookingDto` plus `listingTitle` and `totalCents`. `BookingDto` stays the base shape (D-016).
-  - The total is the nights times the listing's **current** price per night (`stayTotalCents`).
+  - The total is the nights times the listing's **current** price per night (`stayTotalCents`). Since feature 14b the total is stored on the booking instead (D-074).
   - Filters: `listingId`, `status`, and `from`/`to` keeping the stays that take a day of `[from, to)` — the calendar's rule, whatever the status. Past dates are allowed. Sorted by check-in, then id.
   - A `listingId` of another tenant gives an empty page, like any filter that matches nothing.
-- **Consequences:** One query serves the table and the host calendar's bookings. A price change also changes the totals of past bookings; storing the price per booking would need the data to have it.
+- **Consequences:** One query serves the table and the host calendar's bookings. A price change also changed the totals of past bookings, which D-074 fixes by storing each booking's total.
 
 ## D-049: A blocking request covers at most 366 days
 
@@ -620,3 +620,14 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
   - The button is a toggle with one accessible name, "Show password", and `aria-pressed` for its state. It is `type="button"`, so it never submits the form, and it is disabled when the input is.
   - Shown as text, the password must not be changed by phone keyboards: the input has `autoCapitalize="none"`, `autoCorrect="off"` and `spellCheck={false}`. The caller's `autoComplete` (`current-password` / `new-password`) is kept, so password managers still recognise the field.
 - **Consequences:** No new dependency. The button is one more tab stop between the password and the submit button. A shown password stays shown until the button is pressed again, also when the form is sent; hiding it on submit is outside the plan.
+
+## D-074: A booking stores its total
+
+- **Status:** Implemented (feature 14b) — asked for by the repository owner; a change of plan that replaces the total at the current price of [D-048](#d-048-host-bookings-carry-the-listings-title-and-a-total-at-its-current-price)
+- **Context:** The host bookings table computed each total from the listing's current price, so a host's price edit also changed the totals of completed and confirmed stays. A booking's amount is agreed when it is made; like an order line that keeps its unit price, it is stored on the transaction and never recomputed.
+- **Decision:**
+  - `bookings.total_cents`: `integer NOT NULL`, no default, `CHECK (total_cents >= 0)` (D-011). Only the total is stored: the nights come from the dates, and nothing shows a stored price per night.
+  - The seed writes it from the CSV: the nights times the listing's `price_per_night_cents` in `listings.csv` (`withBookingTotals`, with `stayTotalCents`). The CSV has no price per booking, so the listing's price in the data stands for the price the stay was booked at. A booking whose listing is not in the input stops the seed before anything is written.
+  - `GET /tenants/:tenantSlug/host/bookings` returns the stored total; `HostBooking` keeps its shape, so the web app is unchanged. Editing a listing's price changes only the listing and what the portal shows for new stays.
+  - The migration adds the column without a backfill: the database is built from scratch and filled from the CSV.
+- **Consequences:** Every run on an empty database stores the same totals, and a price edit never changes a booking. A database seeded before this migration has to be recreated (`docker compose down -v`); `migrate deploy` on it stops at the `NOT NULL` column. If clients ever book, the API writes the total when the booking is made, and a breakdown (price per night, fees) would be a separate table.

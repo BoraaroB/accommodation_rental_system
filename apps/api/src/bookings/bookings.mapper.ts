@@ -1,9 +1,4 @@
-import {
-  stayTotalCents,
-  toIsoDate,
-  type BookingDto,
-  type HostBooking,
-} from '@ars/shared';
+import { toIsoDate, type BookingDto, type HostBooking } from '@ars/shared';
 import type { Prisma } from '../generated/prisma/client.js';
 
 /** The columns a `BookingDto` is built from. */
@@ -16,10 +11,11 @@ export const bookingSelect = {
   status: true,
 } satisfies Prisma.BookingSelect;
 
-/** A booking with what the host table shows of its listing. */
+/** A booking with its total and what the host table shows of its listing. */
 export const hostBookingSelect = {
   ...bookingSelect,
-  listing: { select: { title: true, pricePerNightCents: true } },
+  totalCents: true,
+  listing: { select: { title: true } },
 } satisfies Prisma.BookingSelect;
 
 export type BookingRow = Prisma.BookingGetPayload<{
@@ -43,18 +39,13 @@ export function toBookingDto(row: BookingRow): BookingDto {
 }
 
 /**
- * A booking row with its listing → the host table's item. Bookings carry no
- * price, so the total uses the listing's current price per night.
+ * A booking row with its listing → the host table's item. The total is the
+ * one stored on the booking (D-074), not the listing's current price.
  */
 export function toHostBooking(row: HostBookingRow): HostBooking {
-  const booking = toBookingDto(row);
   return {
-    ...booking,
+    ...toBookingDto(row),
     listingTitle: row.listing.title,
-    totalCents: stayTotalCents(
-      booking.checkIn,
-      booking.checkOut,
-      row.listing.pricePerNightCents,
-    ),
+    totalCents: row.totalCents,
   };
 }

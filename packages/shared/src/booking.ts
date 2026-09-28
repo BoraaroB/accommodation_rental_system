@@ -29,8 +29,8 @@ export const bookingDtoSchema = z.object({
 
 /**
  * A booking in the host panel's table: the booking plus its listing's title
- * and the stay's total. Bookings carry no price, so the total is the nights
- * times the listing's current price per night.
+ * and the stay's total. The total is stored on the booking when it is made
+ * (D-074), so a later change of the listing's price does not change it.
  */
 export const hostBookingSchema = bookingDtoSchema.extend({
   listingTitle: listingDtoSchema.shape.title,

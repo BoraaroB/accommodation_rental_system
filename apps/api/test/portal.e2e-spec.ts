@@ -145,8 +145,18 @@ describe('Public portal (e2e)', () => {
     };
     await prisma.booking.createMany({
       data: [
-        { ...stay, listingId: L1.id, status: 'confirmed' },
-        { ...stay, listingId: L2.id, status: 'cancelled' },
+        {
+          ...stay,
+          listingId: L1.id,
+          status: 'confirmed',
+          totalCents: 3 * L1.pricePerNightCents,
+        },
+        {
+          ...stay,
+          listingId: L2.id,
+          status: 'cancelled',
+          totalCents: 3 * L2.pricePerNightCents,
+        },
       ],
     });
     await prisma.blockedDay.create({

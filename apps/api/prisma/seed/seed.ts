@@ -1,4 +1,9 @@
-import { parseIsoDate, type BookingDto, type ListingDto } from '@ars/shared';
+import {
+  parseIsoDate,
+  stayTotalCents,
+  type BookingDto,
+  type ListingDto,
+} from '@ars/shared';
 import { BcryptPasswordHasher } from '../../src/auth/bcrypt-password-hasher.js';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { SEED_TENANTS, SEED_USERS, tenantSlugForCountry } from './accounts.js';
@@ -45,8 +50,8 @@ function batches<T>(items: readonly T[]): T[][] {
 /**
  * Every booking fits its listing: `guests` is at most the listing's
  * `maxGuests` (`contracts.ts`), a rule the database cannot check across
- * tables. Bookings of a listing that is not in the input are left to the
- * foreign key.
+ * tables. A booking of a listing that is not in the input is rejected by
+ * `withBookingTotals`.
  */
 export function assertGuestsFit(
   listings: readonly ListingDto[],
@@ -65,6 +70,37 @@ export function assertGuestsFit(
   }
 }
 
+/** A booking with the total it is stored with. */
+export interface BookingWithTotal extends BookingDto {
+  totalCents: number;
+}
+
+/**
+ * Each booking with its total (D-074): its nights times its listing's price
+ * per night in the input, the price the stay was booked at. Throws for a
+ * booking whose listing is not in the input, as it has no price.
+ */
+export function withBookingTotals(
+  listings: readonly ListingDto[],
+  bookings: readonly BookingDto[],
+): BookingWithTotal[] {
+  const prices = new Map(
+    listings.map((listing) => [listing.id, listing.pricePerNightCents]),
+  );
+  return bookings.map((booking) => {
+    const price = prices.get(booking.listingId);
+    if (price === undefined) {
+      throw new Error(
+        `Booking ${booking.id}: listing ${booking.listingId} is not in the input`,
+      );
+    }
+    return {
+      ...booking,
+      totalCents: stayTotalCents(booking.checkIn, booking.checkOut, price),
+    };
+  });
+}
+
 /**
  * Loads the tenants, accounts, listings and bookings in one transaction.
  * Idempotent: every insert skips rows that already exist (same slug, e-mail,
@@ -75,8 +111,9 @@ export async function seed(
   prisma: PrismaClient,
   input: SeedInput,
 ): Promise<SeedCounts> {
-  // Both checks throw before anything is written.
+  // These checks throw before anything is written.
   assertGuestsFit(input.listings, input.bookings);
+  const bookings = withBookingTotals(input.listings, input.bookings);
   const listings = input.listings.map((listing) => ({
     listing,
     tenantSlug: tenantSlugForCountry(listing.country),
@@ -150,7 +187,7 @@ export async function seed(
 
       let insertedBookings = 0;
       for (const batch of batches(
-        input.bookings.map((booking) => ({
+        bookings.map((booking) => ({
           ...booking,
           checkIn: parseIsoDate(booking.checkIn),
           checkOut: parseIsoDate(booking.checkOut),
