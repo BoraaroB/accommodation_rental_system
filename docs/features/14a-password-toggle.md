@@ -1,7 +1,7 @@
 # Feature 14a — Password toggle
 
 - **Branch:** `feat/password-toggle`
-- **Status:** done – awaiting commit
+- **Status:** PR merged — #31, 2026-09-28
 
 ## Goal and scope
 
@@ -44,7 +44,9 @@ A change of plan asked for by the repository owner between features 14 and 15: e
 
 ## Commit message
 
-Proposed (recorded with its hash after the merge):
+One commit on `feat/password-toggle`, merged into `main` by merge commit `25cc35a` (PR #31).
+
+`d0857e2`:
 
 ```
 feat(web): add a show/hide toggle to password fields
