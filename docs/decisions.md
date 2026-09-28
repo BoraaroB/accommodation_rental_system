@@ -610,3 +610,13 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 - **Context:** D-042 keeps the `JWT_SECRET` placeholder too short, so a copied example does not start the API. Feature 14's done criterion is that a copied root example starts the stack.
 - **Decision:** The root `.env.example` has a 44-character `JWT_SECRET` whose value and comment say it is for running locally only. `apps/api/.env.example` keeps the short placeholder.
 - **Consequences:** `cp .env.example .env && docker compose up --build` works on a clean clone. The secret is public, so anyone who has read the repository can sign tokens for a stack that uses it; outside a local machine it must be replaced (the comment and the README say so).
+
+## D-073: Password fields have a show/hide toggle
+
+- **Status:** Implemented (feature 14a) — asked for by the repository owner; a change of plan
+- **Context:** The password fields of sign-in, registration and the admin's host form were plain `type="password"` inputs, so a typo in a new password could not be seen before it was sent.
+- **Decision:**
+  - `components/PasswordInput` puts the kit's `InputGroup` around the input (as `MoneyInput` does) with an eye button at its end (lucide-react `EyeIcon` / `EyeOffIcon`) that switches the input between `password` and `text`. The password starts hidden. Every password field uses it.
+  - The button is a toggle with one accessible name, "Show password", and `aria-pressed` for its state. It is `type="button"`, so it never submits the form, and it is disabled when the input is.
+  - Shown as text, the password must not be changed by phone keyboards: the input has `autoCapitalize="none"`, `autoCorrect="off"` and `spellCheck={false}`. The caller's `autoComplete` (`current-password` / `new-password`) is kept, so password managers still recognise the field.
+- **Consequences:** No new dependency. The button is one more tab stop between the password and the submit button. A shown password stays shown until the button is pressed again, also when the form is sent; hiding it on submit is outside the plan.
