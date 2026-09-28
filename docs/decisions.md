@@ -2,8 +2,10 @@
 
 Every design choice and assumption, numbered so it can be referenced from code reviews and the interview. Each entry has a status:
 
-- **Accepted** — decided; the "Implemented in" line says which feature puts it into code.
-- **Implemented** — already in the code.
+- **Accepted** — decided, not yet in the code; the status says which feature puts it into code.
+- **Implemented** — in the code; the status names the feature that implemented it.
+
+Every decision is implemented. A decision changed later keeps its entry, which names the decision or feature that changed it.
 
 The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stack_challenge.md); the full plan is in [implementation-plan.md](implementation-plan.md).
 
@@ -18,7 +20,7 @@ The challenge text is in [challenge/full_stack_challenge.md](challenge/full_stac
 
 ## D-002: React SPA on Vite, not Next.js
 
-- **Status:** Accepted — implemented in feature 9
+- **Status:** Implemented (feature 9)
 - **Context:** The stack requires React. The backend is already NestJS.
 - **Decision:** A client-side React SPA built with Vite.
 - **Consequences:**

@@ -1,6 +1,6 @@
 # Architecture
 
-The target architecture. Each section notes the feature that implements it; [progress.md](progress.md) shows what exists today. The reasons behind the choices are in [decisions.md](decisions.md).
+How the built system fits together. Each section notes the feature that implemented it; its log in [features/](features/) has the details. The reasons behind the choices are in [decisions.md](decisions.md).
 
 ## Overview
 
@@ -13,7 +13,7 @@ flowchart LR
   SHARED -.-> WEB
 ```
 
-- **`packages/shared`** (`@ars/shared`) — `contracts.ts` as delivered, zod schemas for API inputs and responses, and pure utilities (`today`, `addDays`, `eurosToCents`). Compiled to ESM in `dist/`. _Feature 1 (utilities), later features add schemas._
+- **`packages/shared`** (`@ars/shared`) — `contracts.ts` as delivered, zod schemas for API inputs and responses, and pure utilities (`today`, `addDays`, `eurosToCents`). Compiled to ESM in `dist/`. _Feature 1 (utilities); later features added the schemas._
 - **`apps/api`** — NestJS 12 (ESM) with Prisma 7 on PostgreSQL 18. _Features 2–8._
 - **`apps/web`** — Vite 8, React 19, React Router 8, Tailwind 4, Redux Toolkit + RTK Query. _Features 9–13._
 - **Docker Compose** — Postgres, a one-off `migrate` job (migrations, then the seed), the API and nginx serving the web build and proxying `/api`. _Features 2 (database) and 14 (full stack); see [Docker](#docker)._
@@ -50,21 +50,39 @@ apps/api/src/
     request-context/      RequestContextModule — request id, AsyncLocalStorage context
     logging/              LoggingModule — AppLoggerService, one line per request
     errors/               ErrorsModule — catch-all and Prisma filters (APP_FILTER), error body
+    validation/           ValidationModule — the global zod validation pipe (APP_PIPE)
     database/             DatabaseModule — PrismaService (the Prisma client)
   generated/prisma/       Prisma client (generated, gitignored)
   health/                 HealthModule — GET /api/health
+  auth/                   AuthModule — register, sign-in, me; the global AuthGuard and @Public()
+  access/                 AccessModule — the role in a tenant, ROLE_PERMISSIONS, PermissionsGuard
+  users/                  UsersModule — the users repository
+  tenants/                TenantsModule — portals, the admin's tenants, TenantGuard, @CurrentTenant()
+  listings/               ListingsModule — portal and host listings, availability
+  blocked-days/           BlockedDaysModule — blocking and unblocking days
+  bookings/               BookingsModule — the host's bookings
+  hosts/                  HostsModule — a tenant's hosts in the admin panel
 ```
 
-| Module                 | Provides                                                                   | Imports                |
-| ---------------------- | -------------------------------------------------------------------------- | ---------------------- |
-| `AppConfigModule`      | `ConfigModule.forRoot` (global `ConfigService`)                            | —                      |
-| `RequestContextModule` | `RequestContextService`, `RequestIdMiddleware`, `RequestContextMiddleware` | —                      |
-| `LoggingModule`        | `AppLoggerService`, `RequestLoggerMiddleware`                              | `RequestContextModule` |
-| `ErrorsModule`         | `AllExceptionsFilter`, `PrismaExceptionFilter` as `APP_FILTER`             | `RequestContextModule` |
-| `DatabaseModule`       | `PrismaService` (exported)                                                 | —                      |
-| `HealthModule`         | `HealthController`                                                         | —                      |
+| Module                 | Provides                                                                                                              | Imports                                                                        |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `AppConfigModule`      | `ConfigModule.forRoot` (global `ConfigService`)                                                                       | —                                                                              |
+| `RequestContextModule` | `RequestContextService` (exported), `RequestIdMiddleware`, `RequestContextMiddleware`                                 | —                                                                              |
+| `LoggingModule`        | `AppLoggerService`, `RequestLoggerMiddleware`                                                                         | `RequestContextModule`                                                         |
+| `ErrorsModule`         | `AllExceptionsFilter`, `PrismaExceptionFilter` as `APP_FILTER`                                                        | `RequestContextModule`                                                         |
+| `ValidationModule`     | `StandardSchemaValidationPipe` as `APP_PIPE` ([D-043](decisions.md#d-043-one-global-validation-pipe-for-zod-schemas)) | —                                                                              |
+| `DatabaseModule`       | `PrismaService` (exported)                                                                                            | —                                                                              |
+| `HealthModule`         | `HealthController`                                                                                                    | —                                                                              |
+| `AuthModule`           | `AuthController`, `AuthService`, `TOKEN_SIGNER`, `PASSWORD_HASHER` (exported), `AuthGuard` as `APP_GUARD`             | `UsersModule`, `JwtModule`                                                     |
+| `AccessModule`         | `AccessService` (exported)                                                                                            | `UsersModule`                                                                  |
+| `UsersModule`          | `USERS_REPOSITORY` (exported)                                                                                         | `DatabaseModule`                                                               |
+| `TenantsModule`        | `TenantsController`, `AdminTenantsController`, `TenantsService` (exported), `TENANTS_REPOSITORY`                      | `DatabaseModule`, `AccessModule`                                               |
+| `ListingsModule`       | `ListingsController`, `HostListingsController`, `ListingsService` (exported), `LISTINGS_REPOSITORY`                   | `DatabaseModule`, `TenantsModule`, `AccessModule`                              |
+| `BlockedDaysModule`    | `BlockedDaysController`, `BlockedDaysService`, `BLOCKED_DAYS_REPOSITORY`                                              | `DatabaseModule`, `TenantsModule`, `AccessModule`, `ListingsModule`            |
+| `BookingsModule`       | `BookingsController`, `BookingsService`, `BOOKINGS_REPOSITORY`                                                        | `DatabaseModule`, `TenantsModule`, `AccessModule`                              |
+| `HostsModule`          | `HostsController`, `HostsService`, `HOSTS_REPOSITORY`                                                                 | `DatabaseModule`, `TenantsModule`, `UsersModule`, `AuthModule`, `AccessModule` |
 
-Features 5–8 add one module per entity — `users`, `tenants`, `listings`, `bookings`, `blocked-days`, `hosts` — plus `auth`, each in `src/<entities>/`, generated with the Nest CLI by the feature that gives it its first provider. Modules with a Prisma repository import `DatabaseModule`. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma.
+Features 5–8 added one module per entity plus `auth` and `access`, each in `src/<entities>/`, generated with the Nest CLI by the feature that gave it its first provider. Modules with a Prisma repository import `DatabaseModule`. An entity served to several audiences has one controller per audience in its module (e.g. `listings.controller.ts` for the portal, `host-listings.controller.ts` for the host panel). Repositories are an interface plus an injection token, implemented with Prisma. `TenantGuard` and `PermissionsGuard` are bound per controller with `@UseGuards` ([D-041](decisions.md#d-041-permission-checks-are-bound-per-controller-and-fail-closed)), so a module with guarded controllers imports `TenantsModule` and `AccessModule` for the services the guards inject.
 
 **Public portal** (feature 6), all `@Public()`; the tenant routes go through `TenantGuard` ([D-044](decisions.md#d-044-a-portal-shows-only-its-own-tenants-listings)):
 
@@ -152,7 +170,7 @@ The host panel (feature 7) reuses them: blocking checks the range with the same 
 
 ## Web structure
 
-`apps/web/src`, organised by feature with conventional folder names ([D-058](decisions.md#d-058-the-web-app-is-organised-by-feature-with-conventional-folder-names)). Feature 9 lays the foundation; feature 10 adds the landing page and the portal; feature 11 adds sign-in and the role checks; features 12–13 add the panels.
+`apps/web/src`, organised by feature with conventional folder names ([D-058](decisions.md#d-058-the-web-app-is-organised-by-feature-with-conventional-folder-names)). Feature 9 laid the foundation; feature 10 added the landing page and the portal; feature 11 added sign-in and the role checks; features 12–13 added the panels.
 
 ```
 main.tsx          root: error hooks, Redux provider, router (RouterProvider from react-router/dom)
@@ -248,7 +266,7 @@ test/             Vitest setup, the fetch stub (apiStub), fixtures and render he
 
 ## Configuration
 
-Every environment-specific value comes from `.env`, validated at startup in one module per app ([D-022](decisions.md#d-022-configuration-comes-only-from-validated-env)). `.env.example` files are added by the features that introduce the variables ([D-027](decisions.md#d-027-envexample-files-are-created-with-the-feature-that-needs-them)).
+Every environment-specific value comes from `.env`, validated at startup in one module per app ([D-022](decisions.md#d-022-configuration-comes-only-from-validated-env)). `.env.example` files were added by the features that introduced the variables ([D-027](decisions.md#d-027-envexample-files-are-created-with-the-feature-that-needs-them)).
 
 - **API:** `ConfigModule` validates the env with the zod schema in `apps/api/src/core/config/env.schema.ts` and serves the parsed values through `ConfigService`. It loads `apps/api/.env`, or `apps/api/.env.test` when `NODE_ENV=test` (both Vitest configs set it); real environment variables win over the file. In test mode `DATABASE_URL` must name a database ending in `_test`. The Prisma CLI reads the same `apps/api/.env` through `prisma.config.ts` ([D-037](decisions.md#d-037-generating-the-prisma-client-needs-no-database)); at startup the API waits for the database ([D-038](decisions.md#d-038-the-api-waits-for-the-database-at-startup)). An invalid or missing variable stops the start: the error names every failing variable, is logged as `fatal`, and the process exits with code 1.
 - **Web:** `config/env.ts` validates `VITE_API_BASE_URL` (a path such as `/api/v1` behind the proxy, or a full URL) when the app loads. `vite.config.ts` validates the dev-server variables `WEB_PORT` and `API_PROXY_TARGET`; they have no `VITE_` prefix, so they never reach the bundle, and a production build does not need them.
